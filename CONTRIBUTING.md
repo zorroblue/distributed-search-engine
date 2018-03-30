@@ -2,14 +2,31 @@
 
 ## General guidelines:
 
-* Abstract stuff like IP as much as you can, design code in such a way that minimum hardcoding is done inside the code
+* Abstract stuff as much as you can, design code in such a way that minimum hardcoding is done inside the code.
+
+* IPs and any device specific parameters should be passed as sysargs while running the code.
 
 * Write all communication requests/responses in terms of RPC calls. We use gRPC for the same.
 
 
 ## To run the code
 
+### Basic setup:
+
+* Clone the repository
+
+	`git clone https://github.com/zorroblue/distributed-search-engine`
+
+* Create a virtual environment
+
+	`cd distributed-search-engine` <br>
+	`virtualenv venv` <br>
+	`source venv/bin/activate` <br>
+
 * Set up the required libraries
 
-`pip install -r requirements.txt`
+	`pip install -r requirements.txt`
+ 
+ ### To build the protobufs
 
+ 	`python -m grpc_tools.protoc -I./protos --python_out=. --grpc_python_out=. protos/search.proto`

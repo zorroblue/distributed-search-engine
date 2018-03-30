@@ -1,0 +1,19 @@
+syntax = "proto2";
+
+/* 
+Contains protobuf specifications for search requests and responses from client to master server
+*/
+
+
+message SearchRequest {
+	required string query = 1;
+	optional string location = 2;
+}
+
+message SearchResponse {
+	repeated string urls = 3;
+}
+
+service Search {
+	rpc SearchForString(SearchRequest) returns (SearchResponse) {}
+}
