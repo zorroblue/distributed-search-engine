@@ -17,11 +17,14 @@
 
 	`git clone https://github.com/zorroblue/distributed-search-engine`
 
-* Create a virtual environment
+* Create a virtual environment venv if not done already
 
 	`cd distributed-search-engine` <br>
 	`virtualenv venv` <br>
-	`source venv/bin/activate` <br>
+
+* Set up the environment 
+
+	`. environment.sh`
 
 * Set up the required libraries
 
@@ -39,11 +42,4 @@
 
  	`python -m grpc_tools.protoc -I./protos --python_out=. --grpc_python_out=. protos/search.proto`
 
-
-#### To start the servers and client
-
-*	Unset the proxy
-
-	`unset http_proxy`
-	`unset https_proxy`
 
