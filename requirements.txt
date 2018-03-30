@@ -1,0 +1,6 @@
+enum34==1.1.6
+futures==3.2.0
+grpcio==1.10.0
+grpcio-tools==1.10.0
+protobuf==3.5.2.post1
+six==1.11.0
