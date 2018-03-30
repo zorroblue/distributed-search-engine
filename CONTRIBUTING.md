@@ -26,7 +26,24 @@
 * Set up the required libraries
 
 	`pip install -r requirements.txt`
+
+* Set up the database on the master and backup server
+	
+	`mongoimport --jsonArray -d masterdb -c indices data/data.json` on master
+	`mongoimport --jsonArray -d replicadb -c indices data/data.json` on backup of master
+
  
- ### To build the protobufs
+ ### Running the code
+
+ #### To build the protobufs
 
  	`python -m grpc_tools.protoc -I./protos --python_out=. --grpc_python_out=. protos/search.proto`
+
+
+#### To start the servers and client
+
+*	Unset the proxy
+
+	`unset http_proxy`
+	`unset https_proxy`
+
