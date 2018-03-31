@@ -4,3 +4,4 @@ grpcio==1.10.0
 grpcio-tools==1.10.0
 protobuf==3.5.2.post1
 six==1.11.0
+pymongo==3.6.1

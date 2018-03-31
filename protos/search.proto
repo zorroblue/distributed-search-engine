@@ -17,3 +17,38 @@ message SearchResponse {
 service Search {
 	rpc SearchForString(SearchRequest) returns (SearchResponse) {}
 }
+
+message HealthCheckRequest {
+	required string healthCheck = 1;
+}
+
+message HealthCheckResponse {
+	required string status = 1;
+}
+
+service HealthCheck {
+ 	rpc Check(HealthCheckRequest) returns (HealthCheckResponse);
+}
+
+message Chunk {
+	required string fileName = 1;
+	required bytes content = 2;
+}
+
+enum UploadStatusCode {
+    Unknown = 0;
+    Ok = 1;
+    Failed = 2;
+}
+
+message UploadStatus {
+    required string Message = 1;
+    required UploadStatusCode Code = 2;
+}
+
+service FileTransfer {
+	rpc Transfer(stream Chunk) returns (UploadStatus) {}
+}
+
+
+
