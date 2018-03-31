@@ -30,6 +30,8 @@
 
 	`pip install -r requirements.txt`
 
+* Install mongodb 3.2.12
+
 * Set up the database on the master and backup server
 	
 	`mongoimport --jsonArray -d masterdb -c indices data/data.json` on master
