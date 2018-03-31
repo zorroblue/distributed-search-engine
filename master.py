@@ -14,15 +14,23 @@ class Master(search_pb2_grpc.SearchServicer):
 	def __init__(self):
 		# TODO : Add database
 		self.db = None
+		self._HEALTH_CHECK_TIME = 0
 
 	def SearchForString(self, request, context):
 		print request
 		return search_pb2.SearchResponse()
 
+	def Check(self, request, context):
+		print request
+		# if not self._HEALTH_CHECK_TIME%4:
+		# 	time.sleep(2)
+		self._HEALTH_CHECK_TIME += 1
+		return search_pb2.HealthCheckResponse(status = "working_:)")
 
 def serve():
 	server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
 	search_pb2_grpc.add_SearchServicer_to_server(Master(), server)
+	search_pb2_grpc.add_HealthCheckServicer_to_server(Master(), server)
 	server.add_insecure_port('[::]:50051')
 	server.start()
 	print "Starting master"
