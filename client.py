@@ -25,9 +25,9 @@ def build_parser():
 def run(server_ip):
 	channel = grpc.insecure_channel(server_ip)
 	stub = search_pb2_grpc.SearchStub(channel)
-	request = search_pb2.SearchRequest(query='anything')
+	request = search_pb2.SearchRequest(query='Webiotic')
 	response = stub.SearchForString(request)
-
+	print(response)
 
 def main():
 	parser = build_parser()

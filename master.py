@@ -6,6 +6,8 @@ import grpc
 import search_pb2
 import search_pb2_grpc
 
+from utils import querydb
+
 _ONE_DAY_IN_SECONDS = 60 * 60 * 24
 
 
@@ -17,8 +19,9 @@ class Master(search_pb2_grpc.SearchServicer):
 		self._HEALTH_CHECK_TIME = 0
 
 	def SearchForString(self, request, context):
-		print request
-		return search_pb2.SearchResponse()
+		search_term = request.query
+		urls = querydb('master', search_term)
+		return search_pb2.SearchResponse(urls=urls)
 
 	def Check(self, request, context):
 		print request
@@ -29,8 +32,12 @@ class Master(search_pb2_grpc.SearchServicer):
 
 def serve():
 	server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
+<<<<<<< HEAD
 	search_pb2_grpc.add_SearchServicer_to_server(Master(), server)
 	search_pb2_grpc.add_HealthCheckServicer_to_server(Master(), server)
+=======
+	search_pb2_grpc.add_SearchServicer_to_server(Master('master'), server)
+>>>>>>> e657a6126a52b7a9e31a2bbcc73f11b126d0504a
 	server.add_insecure_port('[::]:50051')
 	server.start()
 	print "Starting master"

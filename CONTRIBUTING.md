@@ -17,16 +17,29 @@
 
 	`git clone https://github.com/zorroblue/distributed-search-engine`
 
-* Create a virtual environment
+* Create a virtual environment venv if not done already
 
 	`cd distributed-search-engine` <br>
 	`virtualenv venv` <br>
-	`source venv/bin/activate` <br>
+
+* Set up the environment 
+
+	`. environment.sh`
 
 * Set up the required libraries
 
 	`pip install -r requirements.txt`
+
+* Set up the database on the master and backup server
+	
+	`mongoimport --jsonArray -d masterdb -c indices data/data.json` on master
+	`mongoimport --jsonArray -d replicadb -c indices data/data.json` on backup of master
+
  
- ### To build the protobufs
+ ### Running the code
+
+ #### To build the protobufs
 
  	`python -m grpc_tools.protoc -I./protos --python_out=. --grpc_python_out=. protos/search.proto`
+
+

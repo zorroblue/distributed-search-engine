@@ -2,7 +2,8 @@
 
 ## Milestones:
 
-- [ ] Get client to receive response from the master 
+- [x] Get client to receive response from the master 
+- [ ] Prepare dummy data and similarity matrix
 - [ ] Get the backup system for master ready 
 - [ ] Synchronize writes from crawler process to master and backup 
 - [ ] Set up dynamic replica based on place and queries, forward new queries there
