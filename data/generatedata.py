@@ -8,7 +8,6 @@ rw = RandomWords()
 
 f = open("synonyms.txt")
 
-similarity_matrix = {}
 indices = {}
 linecount = 0
 

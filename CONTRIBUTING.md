@@ -22,26 +22,28 @@
 	`cd distributed-search-engine` <br>
 	`virtualenv venv` <br>
 
-* Set up the environment 
-
-	`. environment.sh`
-
-* Set up the required libraries
-
-	`pip install -r requirements.txt`
-
 * Install mongodb 3.2.12
 
 * Set up the database on the master and backup server
 	
-	`mongoimport --jsonArray -d masterdb -c indices data/data.json` on master
-	`mongoimport --jsonArray -d replicadb -c indices data/data.json` on backup of master
+	`mongoimport --jsonArray -d masterdb -c indices data/indices.json` on master <br>
+
+	`mongoimport --jsonArray -d replicadb -c indices data/indices.json` on backup of master`
+
+
+* Set up the environment 
+
+	`. environment.sh`
+
+
+* Set up the required libraries
+
+	`pip install -r requirements.txt`
 
  
  ### Running the code
 
  #### To build the protobufs
 
- 	`python -m grpc_tools.protoc -I./protos --python_out=. --grpc_python_out=. protos/search.proto`
-
+ 	python -m grpc_tools.protoc -I./protos --python_out=. --grpc_python_out=. protos/search.proto
 
