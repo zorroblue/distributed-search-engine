@@ -22,6 +22,7 @@ class Master(search_pb2_grpc.SearchServicer):
 		search_term = request.query
 		urls = querydb(self.db, search_term)
 		print("Received query: " + search_term+"\n")
+		print urls
 		return search_pb2.SearchResponse(urls=urls)
 
 	def Check(self, request, context):
