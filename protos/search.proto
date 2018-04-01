@@ -36,9 +36,9 @@ message Chunk {
 }
 
 enum UploadStatusCode {
-    Unknown = 0;
-    Ok = 1;
-    Failed = 2;
+    UNKNOWN = 0;
+    OK = 1;
+    FAILED = 2;
 }
 
 message UploadStatus {

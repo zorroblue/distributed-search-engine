@@ -1,0 +1,106 @@
+advance, approach, arrive, near, reach
+depart, disappear, fade, move, proceed, recede, travel
+dash, escape, elope, flee, hasten, hurry, race, rush, speed, sprint
+rush, run, speed, race, hasten, urge, accelerate, bustle
+conceal, cover, mask, cloak, camouflage, screen, shroud, veil
+plod, go, creep, crawl, inch, poke, drag, toddle, shuffle, trot, dawdle, walk, traipse, mosey, jog, plug, trudge, slump, lumber, trail, lag, run, sprint, trip, bound, hotfoot, high-tail, streak, stride, tear, breeze, whisk, rush, dash, dart, bolt, fling, scamper, scurry, skedaddle, scoot, scuttle, scramble, race, chase, hasten, hurry, hump, gallop, lope, accelerate, stir, budge, travel, wander, roam, journey, trek, ride, spin, slip, glide, slide, slither, coast, flow, sail, saunter, hobble, amble, stagger, paddle, slouch, prance, straggle, meander, perambulate, waddle, wobble, pace, swagger, promenade, lunge
+execute, enact, carry out, finish, conclude, effect, accomplish, achieve, attain
+hold, possess, own, contain, acquire, gain, maintain, believe, bear, beget, occupy, absorb, fill, enjoy
+employ, utilize, exhaust, spend, expend, consume, exercise
+acquire, obtain, secure, procure, gain, fetch, find, score, accumulate, win, earn, rep, catch, net, bag, derive, collect, gather, glean, pick up, accept, come by, regain, salvage
+hold, retain, withhold, preserve, maintain, sustain, support
+place, set, attach, establish, assign, keep, save, set aside, effect, achieve, do, build
+hold, catch, seize, grasp, win, capture, acquire, pick, choose, select, prefer, remove, steal, lift, rob, engage, bewitch, purchase, buy, retract, recall, assume, occupy, consume
+create, originate, invent, beget, form, construct, design, fabricate, manufacture, produce, build, develop, do, effect, execute, compose, perform, accomplish, earn, gain, obtain, acquire, get
+fracture, rupture, shatter, smash, wreck, crash, demolish, atomize
+ruin, demolish, raze, waste, kill, slay, end, extinguish
+slay, execute, assassinate, murder, destroy, cancel, abolish
+gash, slash, prick, nick, sever, slice, carve, cleave, slit, chop, crop, lop, reduce
+drop, descend, plunge, topple, tumble
+soar, hover, flit, wing, flee, waft, glide, coast, skim, sail, cruise
+determine, settle, choose, resolve
+aid, assist, support, encourage, back, wait on, attend, serve, relieve, succor, benefit, befriend, abet
+label, tag, price, ticket, impress, effect, trace, imprint, stamp, brand, sign, note, heed, notice, designate
+plot, scheme, design, draw, map, diagram, procedure, arrangement, intention, device, contrivance, method, way, blueprint
+display, exhibit, present, note, point to, indicate, explain, reveal, prove, demonstrate, expose
+start, open, launch, initiate, commence, inaugurate, originate
+stop, finish, terminate, conclude, close, halt, cessation, discontinuance, cease, halt, stay, pause, discontinue, conclude, finish, quit
+large, enormous, huge, immense, gigantic, vast, colossal, gargantuan, sizable, grand, great, tall, substantial, mammoth, astronomical, ample, broad, expansive, spacious, stout, tremendous, titanic, mountainous
+small, tiny, diminutive, shrimp, runt, miniature, puny, exiguous, dinky, cramped, limited, itsy-bitsy, microscopic, slight, petite, minute
+fresh, unique, original, unusual, novel, modern, current, recent
+feeble, frail, ancient, weak, aged, used, worn, dilapidated, ragged, faded, broken-down, former, old-fashioned, outmoded, passe, veteran, mature, venerable, primitive, traditional, archaic, conventional, customary, stale, musty, obsolete, extinct
+wrong, fake, fraudulent, counterfeit, spurious, untrue, unfounded, erroneous, deceptive, groundless, fallacious, incorrect, inaccurate, mistaken, erroneous, improper, unsuitable
+right, accurate, proper, precise, exact, valid, genuine, real, actual, trusty, steady, loyal, dependable, sincere, staunch, correct, accurate, factual, true, good, just, honest, upright, lawful, moral, proper, suitable, apt, legal, fair
+quick, rapid, speedy, fleet, hasty, snappy, mercurial, swiftly, rapidly, quickly, snappily, speedily, lickety-split, posthaste, hastily, expeditiously, like a flash
+unhurried, gradual, leisurely, late, behind, tedious, slack
+chilly, cold, frosty, wintry, icy, frigid
+feverish, warm, heated, sweltering, torrid, equatorial, tropical, erotic, passionate, spicy, peppery, pungent, sharp tangy, tart, fiery, flaming, sizzling, charged, burning, seared, chafed´, inflamed, irritated, red, smarting, stinging
+silent, still, soundless, mute, tranquil, peaceful, calm, restful, hushed, inaudible 
+reticent, reserved, taciturn, secretive, uncommunicative, tightlipped
+loudly, earsplitting, stentorian, strident, clamorous, boisterous, clangorous, deafening, roisterous, uproarious, pandemoniac
+complete, entire, full, gross, outright, perfect, total, utter, whole, any, complete, every, sum, totality, each and every, every bit of, bar none, every single, everything, everyone
+nothing, nobody, no one, zero, zilch, no one at all, no part, not a bit, not a soul, not a thing, not any, not anyone, not anything, not one, nonexistent, null 
+nadir, nil, naught, void, nada, blank, nix
+daily, traditional, familiar, routine, proper, ordinary, typical, everyday, usual, commonplace, natural, classic, standard, general, bona fide, established, habitual, orthodox, prevalent, run-of-the-mill, time-honored, unvarying, average, conventional, customary, common, regular, garden-variety, household, plain, simple, balanced
+abnormal, aberrant, anomalous, bent, bizarre, deviant, queer, eccentric, freakish, fanatical, odd, eerie, peculiar, weird, unorthodox, nonstandard, atypical, different, irregular, nonconforming, offbeat, unusual, extraordinary, insane, irrational, disorderly, rare, exceptional, extreme, outlandish
+portray, characterize, picture, narrate, relate, recount, represent, report, record
+disagreement, inequity, contrast, dissimilarity, incompatibility
+elaborate, clarify, define, interpret, justify, account for
+thought, concept, conception, notion, understanding, opinion, plan, view, belief
+gaze, see, glance, watch, survey, study, seek, search for, peek, peep, glimpse, stare, contemplate, examine, gape, ogle, scrutinize, inspect, leer, behold, observe, view, witness, perceive, spy, sight, discover, notice, recognize, peer, eye, gawk, peruse, explore
+tale, myth, legend, fable, yarn, account, narrative, chronicle, epic, sage, anecdote, record, memoir
+disclose, reveal, show, expose, uncover, relate, narrate, inform, advise, explain, divulge, declare, command, order, bid, recount, repeat
+judge, deem, assume, believe, consider, contemplate, reflect, mediate
+enrage, infuriate, arouse, nettle, exasperate, inflame, madden
+mad, furious, enraged, excited, wrathful, indignant, exasperated, aroused, inflamed
+quiet, peaceful, still, tranquil, mild, serene, smooth, composed, collected, unruffled, level-headed, unexcited, detached, aloof
+keen, fervent, enthusiastic, involved, interested, alive to
+fright, dread, terror, alarm, dismay, anxiety, scare, awe, horror, panic, apprehension
+pleased, contented, satisfied, delighted, elated, joyful, cheerful, ecstatic, jubilant, gay, tickled, gratified, glad, blissful, overjoyed
+despise, loathe, detest, abhor, disfavor, dislike, disapprove, abominate
+like, admire, esteem, fancy, care for, cherish, adore, treasure, worship, appreciate, savor
+temperamental, changeable, short-tempered, glum, morose, sullen, mopish, irritable, testy, peevish, fretful, spiteful, sulky, touchy
+miserable, uncomfortable, wretched, heart-broken, unfortunate, poor, downhearted, sorrowful, depressed, dejected, melancholy, glum, gloomy, dismal, discouraged, unhappy
+afraid, frightened, alarmed, terrified, panicked, fearful, unnerved, insecure, timid, shy, skittish, jumpy, disquieted, worried, vexed, troubled, disturbed, horrified, terrorized, shocked, petrified, haunted, timorous, shrinking, tremulous, stupefied, paralyzed, stunned, apprehensive
+dreadful, terrible, abominable, bad, poor, unpleasant
+evil, immoral, wicked, corrupt, sinful, depraved, rotten, contaminated, spoiled, tainted, harmful, injurious, unfavorable, defective, inferior, imperfect, substandard, faulty, improper, inappropriate, unsuitable, disagreeable, unpleasant, cross, nasty, unfriendly, irascible, horrible, atrocious, outrageous, scandalous, infamous, wrong, noxious, sinister, putrid, snide, deplorable, dismal, gross, heinous, nefarious, base, obnoxious, detestable, despicable, contemptible, foul, rank, ghastly, execrable
+bent, twisted, curved, hooked, zigzag
+perilous, hazardous, risky, uncertain, unsafe
+shadowy, unlit, murky, gloomy, dim, dusky, shaded, sunless, black, dismal, sad
+boring, tiring,, tiresome, uninteresting, slow, dumb, stupid, unimaginative, lifeless, dead, insensible, tedious, wearisome, listless, expressionless, plain, monotonous, humdrum, dreary
+stout, corpulent, fleshy, beefy, paunchy, plump, full, rotund, tubby, pudgy, chubby, chunky, burly, bulky, elephantine
+improper, rude, coarse, indecent, crude, vulgar, outrageous, extreme, grievous, shameful, uncouth, obscene, low
+damage, harm, injure, wound, distress, afflict, pain
+indolent, slothful, idle, inactive, sluggish
+quandary, dilemma, pickle, problem, plight, spot, scrape, jam
+distress, anguish, anxiety, worry, wretchedness, pain, danger, peril, disaster, grief, misfortune, difficulty, concern, pains, inconvenience, exertion, effort
+hideous, frightful, frightening, shocking, horrible, unpleasant, monstrous, terrifying, gross, grisly, ghastly, horrid, unsightly, plain, homely, evil, repulsive, repugnant, gruesome
+Positive
+incredible, unbelievable, improbable, fabulous, wonderful, fantastic, astonishing, astounding, extraordinary
+pretty, lovely, handsome, attractive, gorgeous, dazzling, splendid, magnificent, comely, fair, ravishing, graceful, elegant, fine, exquisite, aesthetic, pleasing, shapely, delicate, stunning, glorious, heavenly, resplendent, radiant, glowing, blooming, sparkling
+courageous, fearless, dauntless, intrepid, plucky, daring, heroic, valorous, audacious, bold, gallant, valiant, doughty, mettlesome
+shining, shiny, gleaming, brilliant, sparkling, shimmering, radiant, vivid, colorful, lustrous, luminous, incandescent, intelligent, knowing, quick-witted, smart, intellectual
+savory, delectable, appetizing, luscious, scrumptious, palatable, delightful, enjoyable, toothsome, exquisite
+appreciate, delight in, be pleased, indulge in, luxuriate in, bask in, relish, devour, savor, like
+well-known, renowned, celebrated, famed, eminent, illustrious, distinguished, noted, notorious
+humorous, amusing, droll, comic, comical, laughable, silly
+excellent, fine, superior, wonderful, marvelous, qualified, suited, suitable, apt, proper, capable, generous, kindly, friendly, gracious, obliging, pleasant, agreeable, pleasurable, satisfactory, well-behaved, obedient, honorable, reliable, trustworthy, safe, favorable, profitable, advantageous, righteous, expedient, helpful, valid, genuine, ample, salubrious, estimable, beneficial, splendid, great, noble, worthy, first-rate, top-notch, grand, sterling, superb, respectable, edifying
+noteworthy, worthy, distinguished, remarkable, grand, considerable, powerful, much, mighty
+prankish, playful, naughty, roguish, waggish, impish, sportive
+clean, orderly, tidy, trim, dapper, natty, smart, elegant, well-organized, super, desirable, spruce, shipshape, well-kept, shapely
+well-liked, approved, accepted, favorite, celebrated, common, current
+reply, respond, retort, acknowledge
+question, inquire of, seek information from, put a question to, demand, request, expect, inquire, query, interrogate, examine, quiz
+shout, yell, yowl, scream, roar, bellow, weep, wail, sob, bawl
+inform, notify, advise, relate, recount, narrate, explain, reveal, disclose, divulge, declare, command, order, bid, enlighten, instruct, insist, teach, train, direct, issue, remark, converse, speak, affirm, suppose, utter, negate, express, verbalize, voice, articulate, pronounce, deliver, convey, impart, assert, state, allege, mutter, mumble, whisper, sigh, exclaim, yell, sing, yelp, snarl, hiss, grunt, snort, roar, bellow, thunder, boom, scream, shriek, screech, squawk, whine, philosophize, stammer, stutter, lisp, drawl, jabber, protest, announce, swear, vow, content, assure, deny, dispute
+add up to, affect, be important, be of value, be substantive, carry weight, connote, count, denote, express, imply, intend, involve, signify, spell, stand for, suggest, value, weigh in,
+a little, sort of, kind of, a bit, relatively, slightly, moderately, to some extent / degree , reasonably, partially, more or less, not much
+rather, quite, fairly, by a long shot, by far, rather, significantly, well
+in a way, virtually, to a certain extent, in some measure, to some extent, to a certain degree, quasi , in a manner of speaking, effectively 
+anyhow, anyway, anywise, by hook or by crook, another, howsoever, in any way, somehow or other, someway, by some means
+certain, sure, positive, determined, clear, distinct, obvious
+just, impartial, unbiased, objective, unprejudiced, honest
+necessary, vital, critical, indispensable, valuable, essential, significant, primary, principal, considerable, famous, distinguished, notable, well-known
+fascinating, engaging, sharp, keen, bright, intelligent, animated, spirited, attractive, inviting, intriguing, provocative, thought-provoking, challenging, inspiring, involving, moving, titillating, tantalizing, exciting, entertaining, piquant, lively, racy, spicy, engrossing, absorbing, consuming, gripping, arresting, enthralling, spellbinding, curious, captivating, enchanting, bewitching, appealing
+portion, share, piece, allotment, section, fraction, fragment
+space, area, spot, plot, region, location, situation, position, residence, dwelling, set, site, station, status, state
