@@ -1,2 +1,3 @@
 *.pyc
+*.log
 search_pb2*
