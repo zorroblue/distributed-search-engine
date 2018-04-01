@@ -31,12 +31,14 @@ def querydb(sender, search_term):
 def init_logger(db_name, logging_level):
 	logger = logging.getLogger(db_name)
 	logger.setLevel(logging_level)
-	fh = logging.FileHandler('log'+db_name+'.log')
-	fh.setLevel(logging_level)
-	# create a logging format
-	formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-	fh.setFormatter(formatter)
-	logger.addHandler(fh)
+	# add handler only if already added
+	if not len(logger.handlers):
+		fh = logging.FileHandler('log'+db_name+'.log')
+		fh.setLevel(logging_level)
+		# create a logging format
+		formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+		fh.setFormatter(formatter)
+		logger.addHandler(fh)
 	return logger
 
 
