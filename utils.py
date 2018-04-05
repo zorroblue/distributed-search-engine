@@ -27,6 +27,15 @@ def querydb(sender, search_term):
 		return response["urls"]
 	return []
 
+def addtodb(sender, indices):
+	client = MongoClient('localhost', 27017)
+	if sender == 'master':
+		db = client.masterdb
+	else:
+		db = client.replicadb
+
+	print "Adding to DB"
+
 
 def init_logger(db_name, logging_level):
 	logger = logging.getLogger(db_name)

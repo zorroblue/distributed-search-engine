@@ -1,24 +1,33 @@
 from __future__ import print_function
+from concurrent import futures
+import time
+import math
 
 from argparse import ArgumentParser
 import random
 import time
 
-import master
+from master import Master
 import grpc
 import search_pb2
 import search_pb2_grpc
 
+from writeservice import WriteService
 from utils import init_logger, parse_level
 
-MAX_RETRIES = 3
 
+MAX_RETRIES = 1
+_ONE_DAY_IN_SECONDS = 60 * 60 * 24
 
 def build_parser():
 	parser = ArgumentParser()
 	parser.add_argument('--master',
 			dest='master', help='Master IP address',
 			default='localhost:50051',
+			required=False)
+	parser.add_argument('--port',
+			dest='port', help='Replica Port',
+			default='50052',
 			required=False)
 	choices = ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']
 	parser.add_argument('--logging',
@@ -28,10 +37,29 @@ def build_parser():
 			required=False)
 	return parser
 
+def master_serve(server, db_name, logging_level):
+	master = Master(db_name, logging_level)
+	search_pb2_grpc.add_SearchServicer_to_server(master, server)
+	search_pb2_grpc.add_HealthCheckServicer_to_server(master, server)
+	print("Starting master")
+	try:
+		while True:
+			time.sleep(_ONE_DAY_IN_SECONDS)
+	except KeyboardInterrupt:
+		master.logger.info("Shutting down server")
+		logging.shutdown()
+		server.stop(0)
 
-def run(server_ip, logging_level):
+
+def run(server_ip, logging_level, replica_port):
 	retries = 0
 	logger = init_logger('replica', logging_level)
+	server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
+	
+	write_service = WriteService('replica')
+	search_pb2_grpc.add_DatabaseWriteServicer_to_server(write_service, server)
+	server.add_insecure_port('[::]:'+ replica_port)
+	server.start()
 	while True:
 		time.sleep(1)
 		channel = grpc.insecure_channel(server_ip)
@@ -54,7 +82,7 @@ def run(server_ip, logging_level):
 			retries += 1
 			if retries > MAX_RETRIES:
 				logger.debug("Ready to serve as new master...")
-				master.serve('replica', logging_level)
+				master_serve(server, 'replica', logging_level)
 				break;
 			else:
 				logger.debug("Retrying again #" + str(retries))
@@ -65,8 +93,9 @@ def main():
 	parser = build_parser()
 	options = parser.parse_args()
 	master_server_ip = options.master
+	replica_port = options.port
 	logging_level = parse_level(options.logging_level)
-	run(master_server_ip, logging_level)
+	run(master_server_ip, logging_level, replica_port)
 
 if __name__ == '__main__':
 	main()

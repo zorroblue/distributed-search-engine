@@ -14,8 +14,34 @@ message SearchResponse {
 	repeated string urls = 3;
 }
 
+message CommitRequest {
+	optional string data = 4;
+}
+
+message CommitVote {
+	optional int32 status = 5;
+}
+
+enum CommitCode {
+    COMMIT = 0;
+    ROLL_BACK = 1;
+}
+
+message CommitStatusUpdate {
+	optional CommitCode code = 6;
+}
+
+message Acknowledgement {
+	optional int32 status = 7;
+}
+
 service Search {
 	rpc SearchForString(SearchRequest) returns (SearchResponse) {}
+}
+
+service DatabaseWrite {
+	rpc QueryToCommit(CommitRequest) returns (CommitVote) {}
+	rpc CommitPhase(CommitStatusUpdate) returns (Acknowledgement) {}
 }
 
 message HealthCheckRequest {
