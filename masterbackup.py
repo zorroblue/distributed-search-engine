@@ -15,6 +15,8 @@ import search_pb2_grpc
 from writeservice import WriteService
 from utils import init_logger, parse_level
 
+import logging
+
 
 MAX_RETRIES = 1
 _ONE_DAY_IN_SECONDS = 60 * 60 * 24
@@ -66,7 +68,7 @@ def run(server_ip, logging_level, replica_port):
 		stub = search_pb2_grpc.HealthCheckStub(channel)
 		request = search_pb2.HealthCheckRequest(healthCheck = 'is_working?')
 		try :
-			print("Sending heartbeat message to master")
+			#print("Sending heartbeat message to master")
 			logger.info("Sending heartbeat message to master")
 			response = stub.Check(request, timeout = 10)
 			print(response)

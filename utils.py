@@ -22,7 +22,7 @@ def querydb(sender, search_term):
 		db = client.replicadb
 
 	indices = db.indices
-	response = indices.find_one({"name" : search_term})
+	response = indices.find_one({"status" : "committed", "name" : search_term})
 	client.close()
 	if response is not None:
 		return response["urls"]
@@ -42,8 +42,10 @@ def addtodb(sender, indices):
 	indices = db.indices
 	result = indices.insert_many(data)
 	print "Added ", len(result.inserted_ids)
+	print indices.count()
 	client.close()
 	return True
+
 
 def commitdb(sender):
 	client = MongoClient('localhost', 27017)
@@ -52,11 +54,25 @@ def commitdb(sender):
 	else:
 		db = client.replicadb
 	print "COMMIT"
-	# TODO
+	indices = db.indices
+	status = indices.update({'status': 'pending'},
+          {'$set': {'status':'pending'}}, 
+          multi=True)
+	print "Write status ", status
+	client.close()
+
 
 def rollbackdb(sender):
-	# TODO
+	client = MongoClient('localhost', 27017)
+	if sender == 'master':
+		db = client.masterdb
+	else:
+		db = client.replicadb
 	print "ROLLBACK"
+	indices = db.indices
+	status = indices.delete_many({'status' : 'pending'})
+	print status
+	client.close()
 
 
 def init_logger(db_name, logging_level):
