@@ -48,7 +48,12 @@ def generate_indices(status='committed', lower_range=1, upper_range=50):
 			indices[word]['status'] = status
 			indices[word]['sim_words'] = words
 			indices[word]['urls'] = generate_random_urls(word)
-	return indices
+		json_list = []
+
+		for word in indices:
+			indices[word]['name'] = word
+			json_list.append(indices[word])
+	return json_list
 
 def main():
 	indices = generate_indices()

@@ -9,6 +9,7 @@ import logging
 
 import argparse
 from argparse import ArgumentParser
+from bson import json_util
 
 
 def querydb(sender, search_term):
@@ -28,6 +29,8 @@ def querydb(sender, search_term):
 	return []
 
 def addtodb(sender, indices):
+	'''Add json string to db
+	'''
 	client = MongoClient('localhost', 27017)
 	if sender == 'master':
 		db = client.masterdb
@@ -35,6 +38,25 @@ def addtodb(sender, indices):
 		db = client.replicadb
 
 	print "Adding to DB"
+	data = json.loads(indices.decode('string-escape').strip('"'))
+	indices = db.indices
+	result = indices.insert_many(data)
+	print "Added ", len(result.inserted_ids)
+	client.close()
+	return True
+
+def commitdb(sender):
+	client = MongoClient('localhost', 27017)
+	if sender == 'master':
+		db = client.masterdb
+	else:
+		db = client.replicadb
+	print "COMMIT"
+	# TODO
+
+def rollbackdb(sender):
+	# TODO
+	print "ROLLBACK"
 
 
 def init_logger(db_name, logging_level):

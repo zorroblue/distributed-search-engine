@@ -1,6 +1,6 @@
 '''Service to take care of writes'''
 import json
-from utils import addtodb
+from utils import addtodb, commitdb, rollbackdb
 import search_pb2
 
 class WriteService(object):
@@ -17,5 +17,13 @@ class WriteService(object):
 		return search_pb2.CommitVote(status=1)
 
 	def CommitPhase(self, request, context):
-		pass
-		# TODO
+		print request.code
+		try:
+			if request.code == search_pb2.COMMIT:
+				commitdb(self.db)
+			elif request.code == search_pb2.ROLL_BACK:
+				rollbackdb(self.db)
+		except Exception as e:
+			print str(e)
+			return search_pb2.Acknowledgement(status=0)
+		return search_pb2.Acknowledgement(status=1)
