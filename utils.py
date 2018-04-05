@@ -54,9 +54,10 @@ def commitdb(sender):
 	else:
 		db = client.replicadb
 	print "COMMIT"
+	# TODO remove duplicate records whose status is committed and who have names in the pending list
 	indices = db.indices
 	status = indices.update({'status': 'pending'},
-          {'$set': {'status':'pending'}}, 
+          {'$set': {'status':'committed'}}, 
           multi=True)
 	print "Write status ", status
 	client.close()
