@@ -39,6 +39,7 @@ def build_parser():
 			required=False)
 	return parser
 
+
 def master_serve(server, db_name, logging_level):
 	master = Master(db_name, logging_level)
 	search_pb2_grpc.add_SearchServicer_to_server(master, server)
@@ -57,7 +58,7 @@ def run(server_ip, logging_level, replica_port):
 	retries = 0
 	logger = init_logger('replica', logging_level)
 	server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
-	
+	# add write service to backup server to handle database updates from crawler 
 	write_service = WriteService('replica')
 	search_pb2_grpc.add_DatabaseWriteServicer_to_server(write_service, server)
 	server.add_insecure_port('[::]:'+ replica_port)
@@ -68,7 +69,6 @@ def run(server_ip, logging_level, replica_port):
 		stub = search_pb2_grpc.HealthCheckStub(channel)
 		request = search_pb2.HealthCheckRequest(healthCheck = 'is_working?')
 		try :
-			#print("Sending heartbeat message to master")
 			logger.info("Sending heartbeat message to master")
 			response = stub.Check(request, timeout = 10)
 			print(response)

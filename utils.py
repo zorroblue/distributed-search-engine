@@ -54,12 +54,21 @@ def commitdb(sender):
 	else:
 		db = client.replicadb
 	print "COMMIT"
-	# TODO remove duplicate records whose status is committed and who have names in the pending list
 	indices = db.indices
+
+	# remove duplicate records whose status is committed and who have names in the pending list
+	words = indices.find({"status" : "pending"}, {"name" : 1, '_id' : 0})
+	words = [x['name'] for x in words]
+	print "Duplicates : ",words
+	status = indices.remove({"status" : "committed", "name" :{"$in": words}})
+	print status
+	
+	# update pending records to committed
 	status = indices.update({'status': 'pending'},
           {'$set': {'status':'committed'}}, 
           multi=True)
 	print "Write status ", status
+	print "Total length of documents ", indices.count()
 	client.close()
 
 

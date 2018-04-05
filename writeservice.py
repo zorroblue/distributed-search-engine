@@ -10,7 +10,7 @@ class WriteService(object):
 	def QueryToCommit(self, request, context):
 		data = json.dumps(request.data)
 		try:
-			addtodb(self.db, data) # TODO
+			addtodb(self.db, data)
 		except Exception as e:
 			print(str(e))
 			return search_pb2.CommitVote(status=0)
