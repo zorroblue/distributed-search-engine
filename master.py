@@ -54,7 +54,7 @@ def serve(db_name, logging_level=logging.DEBUG, port='50051'):
 	master = Master(db_name, logging_level)
 	search_pb2_grpc.add_SearchServicer_to_server(master, server)
 	search_pb2_grpc.add_HealthCheckServicer_to_server(master, server)
-	write_service = WriteService(db_name)
+	write_service = WriteService(db_name, logger=master.logger)
 	search_pb2_grpc.add_DatabaseWriteServicer_to_server(write_service, server)
 	server.add_insecure_port('[::]:'+ port)
 	server.start()

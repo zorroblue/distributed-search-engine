@@ -18,7 +18,7 @@ from utils import init_logger, parse_level
 import logging
 
 
-MAX_RETRIES = 1
+MAX_RETRIES = 3
 _ONE_DAY_IN_SECONDS = 60 * 60 * 24
 
 def build_parser():
@@ -59,12 +59,12 @@ def run(server_ip, logging_level, replica_port):
 	logger = init_logger('replica', logging_level)
 	server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
 	# add write service to backup server to handle database updates from crawler 
-	write_service = WriteService('replica')
+	write_service = WriteService('replica', logger=logger)
 	search_pb2_grpc.add_DatabaseWriteServicer_to_server(write_service, server)
 	server.add_insecure_port('[::]:'+ replica_port)
 	server.start()
 	while True:
-		time.sleep(1)
+		time.sleep(10)
 		channel = grpc.insecure_channel(server_ip)
 		stub = search_pb2_grpc.HealthCheckStub(channel)
 		request = search_pb2.HealthCheckRequest(healthCheck = 'is_working?')
