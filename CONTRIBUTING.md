@@ -47,3 +47,6 @@
 
  	python -m grpc_tools.protoc -I./protos --python_out=. --grpc_python_out=. protos/search.proto
 
+ #### Defaults:
+
+ 	The master server runs in port 50051 while replica runs in port 50052. The database name of master is 'masterdb' while replica's is 'replicadb'

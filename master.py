@@ -1,6 +1,7 @@
 from concurrent import futures
 import time
 import math
+import json
 
 from argparse import ArgumentParser
 import argparse
@@ -10,8 +11,9 @@ import search_pb2
 import search_pb2_grpc
 
 import logging
+from utils import querydb, init_logger, parse_level, addtodb
 
-from utils import querydb, init_logger, parse_level
+from writeservice import WriteService
 
 _ONE_DAY_IN_SECONDS = 60 * 60 * 24
 
@@ -27,7 +29,7 @@ def build_parser():
 	return parser
 
 
-class Master(search_pb2_grpc.SearchServicer):
+class Master(object):
 
 	def __init__(self, db_name, logging_level=logging.DEBUG):
 		self.db = db_name
@@ -47,12 +49,14 @@ class Master(search_pb2_grpc.SearchServicer):
 		return search_pb2.HealthCheckResponse(status = "STATUS: Master server up!")
 
 
-def serve(db_name, logging_level=logging.DEBUG):
+def serve(db_name, logging_level=logging.DEBUG, port='50051'):
 	server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
 	master = Master(db_name, logging_level)
 	search_pb2_grpc.add_SearchServicer_to_server(master, server)
 	search_pb2_grpc.add_HealthCheckServicer_to_server(master, server)
-	server.add_insecure_port('[::]:50051')
+	write_service = WriteService(db_name, logger=master.logger)
+	search_pb2_grpc.add_DatabaseWriteServicer_to_server(write_service, server)
+	server.add_insecure_port('[::]:'+ port)
 	server.start()
 	master.logger.info("Starting server")
 	print "Starting master"
