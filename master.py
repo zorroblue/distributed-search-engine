@@ -11,12 +11,14 @@ import search_pb2
 import search_pb2_grpc
 
 import logging
-from utils import querydb, init_logger, parse_level, addtodb
+from utils import querydb, init_logger, parse_level, addtodb, createdb
 
 from writeservice import WriteService
 
 _ONE_DAY_IN_SECONDS = 60 * 60 * 24
 
+THRESHOLD_COUNT = 1
+THRESHOLD_CATEGORIES = 1
 
 def build_parser():
 	parser = ArgumentParser()
@@ -35,10 +37,27 @@ class Master(object):
 		self.db = db_name
 		self._HEALTH_CHECK_TIME = 0
 		self.logger = init_logger(db_name, logging_level)
-	
+		self.loc_count = {} # keeps track of search queries and categories in location
+		self.cat_count = {} # keeps track of number of categories whose loc_count > THRESHOLD_COUNT
+
 	def SearchForString(self, request, context):
 		search_term = request.query
+		location = request.location
+		
+		# increment the values for counts
+		if location is not None:
+			if location not in loc_count:
+				loc_count[location] = defaultdict(int)
+			loc_count[location][search_term] += 1
+			if loc_count[location][search_term] == THRESHOLD_COUNT and location not in cat_count:
+				cat_count[location] = 1
+				if len(cat_count.keys()) == THRESHOLD_CATEGORIES:
+					# TODO : CREATE THE REPLICA HERE
+					# TODO : FIND REPLICA IP BY QUERYING
+					pass
+
 		urls = querydb(self.db, search_term)
+		
 		self.logger.debug("Received query: " + search_term)
 		print urls
 		return search_pb2.SearchResponse(urls=urls)

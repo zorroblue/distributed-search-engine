@@ -21,6 +21,9 @@ import logging
 MAX_RETRIES = 3
 _ONE_DAY_IN_SECONDS = 60 * 60 * 24
 
+THRESHOLD_COUNT = 3
+THRESHOLD_CATEGORIES = 2
+
 def build_parser():
 	parser = ArgumentParser()
 	parser.add_argument('--master',

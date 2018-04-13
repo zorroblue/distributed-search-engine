@@ -12,6 +12,22 @@ from argparse import ArgumentParser
 from bson import json_util
 
 
+def createdb(master_ip, from_collection_name, indices, db_name, collection_name, data=None):
+	client = MongoClient('localhost', 27017)
+	if db_name in client and collection_name in client[db_name]:
+		print "Database already exists"
+		return
+
+	db = client[db_name]
+	collection_name = db[collection_name]
+	if data is not None:
+		# Add data here
+		# TODO
+		db.cloneCollection(str(master_ip)+':27017', from_collection_name, {"status" : "committed", "name" :{"$in": indices}} )
+
+
+
+
 def querydb(sender, search_term):
 	'''Query on mongodb database for suitable response for search term
 	'''
