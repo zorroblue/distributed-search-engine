@@ -12,7 +12,7 @@ from argparse import ArgumentParser
 from bson import json_util
 
 
-def createdb(master_ip, from_collection_name, indices, db_name, collection_name, data=None):
+def createdb(master_ip, from_collection_name, indices, db_name, collection_name):
 	client = MongoClient('localhost', 27017)
 	if db_name in client and collection_name in client[db_name]:
 		print "Database already exists"
@@ -20,10 +20,9 @@ def createdb(master_ip, from_collection_name, indices, db_name, collection_name,
 
 	db = client[db_name]
 	collection_name = db[collection_name]
-	if data is not None:
-		# Add data here
-		# TODO
-		db.cloneCollection(str(master_ip)+':27017', from_collection_name, {"status" : "committed", "name" :{"$in": indices}} )
+	print "Cloning"
+	db.cloneCollection(str(master_ip)+':27017', from_collection_name, {"status" : "committed", "name" :{"$in": indices}} )
+	print "Cloned successfully"
 
 
 
@@ -130,3 +129,17 @@ def parse_level(level):
 		message = 'Invalid choice! Please choose from DEBUG, INFO, WARNING, ERROR, CRITICAL'
 		argparse.ArgumentError(self, message)
 	return logging_level
+
+def read_replica_filelist():
+	f = open("replicas_list.txt")
+	replica_ips = {}
+	for line in f:
+		line = line.strip().split()
+		# IP LOCATION
+		location = line[1].strip()
+		ip = line[0].strip()
+		if location not in replica_ips:
+			replica_ips[location] = []
+		replica_ips[location].append(ip)
+	print replica_ips
+	return replica_ips
