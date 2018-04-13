@@ -10,22 +10,22 @@ import logging
 import argparse
 from argparse import ArgumentParser
 from bson import json_util
+from bson import BSON
 
 
-def createdb(master_ip, from_collection_name, indices, db_name, collection_name):
+def get_data_for_indices(sender, indices):
+	# TODO get similar indices
 	client = MongoClient('localhost', 27017)
-	if db_name in client and collection_name in client[db_name]:
-		print "Database already exists"
-		return
+	if sender == 'master':
+		db = client.masterdb
+	else:
+		db = client.replicadb
+	indices_coll = db.indices
+	responses = indices_coll.find({"status" : "committed", "name" :{"$in": indices}})
+	result =  json_util.dumps(responses, sort_keys=True, indent=4, default=json_util.default)
+	return result
 
-	db = client[db_name]
-	collection_name = db[collection_name]
-	print "Cloning"
-	db.cloneCollection(str(master_ip)+':27017', from_collection_name, {"status" : "committed", "name" :{"$in": indices}} )
-	print "Cloned successfully"
-
-
-
+print get_data_for_indices('master', ['approach', 'limited'])
 
 def querydb(sender, search_term):
 	'''Query on mongodb database for suitable response for search term
