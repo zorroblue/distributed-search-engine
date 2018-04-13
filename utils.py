@@ -13,6 +13,23 @@ from bson import json_util
 from bson import BSON
 
 
+# TODO : add time of creation/update
+# Metadata db
+def add_to_metadatadb(sender, replica_ip, location, indices):
+	record = {}
+	record["replica_ip"] = replica_ip
+	record["location"] = location
+	record["indices"] = indices
+	#record[""]
+
+	client = MongoClient('localhost', 27017)
+	db = client[sender+'_metadatadb']
+	metadata_coll = db.metadata
+	metadata_coll.insert(json.loads(json.dumps([record])))
+	print "Success"
+
+add_to_metadatadb('master', '123', 'iND', ['asa'])
+
 def get_data_for_indices(sender, indices):
 	# TODO get similar indices
 	client = MongoClient('localhost', 27017)
@@ -25,7 +42,6 @@ def get_data_for_indices(sender, indices):
 	result =  json_util.dumps(responses, sort_keys=True, indent=4, default=json_util.default)
 	return result
 
-print get_data_for_indices('master', ['approach', 'limited'])
 
 def querydb(sender, search_term):
 	'''Query on mongodb database for suitable response for search term

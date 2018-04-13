@@ -27,7 +27,8 @@ def run(server_ip):
 	stub = search_pb2_grpc.SearchStub(channel)
 	while True:
 		query = raw_input("Type your query : ")
-		request = search_pb2.SearchRequest(query=query.strip())
+		location = raw_input("Type your location: ")
+		request = search_pb2.SearchRequest(query=query.strip(), location=location.strip())
 		response = stub.SearchForString(request)
 		print(response)
 
