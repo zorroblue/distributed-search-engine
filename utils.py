@@ -159,3 +159,21 @@ def read_replica_filelist():
 		replica_ips[location].append(ip)
 	print replica_ips
 	return replica_ips
+
+def get_similar(sender, words):
+	client = MongoClient('localhost', 27017)
+	if sender == 'master':
+		db = client.masterdb
+	else:
+		db = client.replicadb
+
+	indices = db.indices
+	responses = indices.find({"status" : "committed", "name" :{"$in": words}})
+	client.close()
+
+	similar = set()
+	if responses is not None:
+		for response in responses:
+			similar.update(response["sim_words"])
+		
+	return similar
