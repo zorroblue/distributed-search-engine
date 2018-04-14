@@ -33,14 +33,16 @@ def query_metadatadb(sender, location, search_term):
 
 	db = client[sender+'_metadatadb']
 	metadata_coll = db.metadata
-	responses = metadata_coll.find({"location":location})
-	for response in responses:
+	replica = metadata_coll.find_one({"location":location})
+	if replica is None:
+		return None, False
 
-		if search_term in response["indices"]:
-			print response["indices"]
-			print search_term+ " found in "+ response["replica_ip"]
-			return response["replica_ip"]
-	return None
+	if search_term in replica["indices"]:
+		print replica["indices"]
+		print search_term+ " found in "+ replica["replica_ip"]
+		return replica["replica_ip"], True
+	else:
+		return replica["replica_ip"], False
 
 
 def get_similar(sender, words):
