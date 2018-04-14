@@ -60,6 +60,7 @@ service HealthCheck {
 message ReplicaRequest {
 	required string data = 1;
 	required string master_ip = 2;
+	optional bool create = 3;
 }
 
 message ReplicaStatus {

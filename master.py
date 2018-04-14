@@ -43,7 +43,7 @@ class Master(object):
 		self._HEALTH_CHECK_TIME = 0
 		self.logger = init_logger(db_name, logging_level)
 		self.loc_count = {} # keeps track of search queries and categories in location
-		self.cat_count = {} # keeps track of number of categories whose loc_count > THRESHOLD_COUNT
+		self.cat_count = defaultdict(set()) # keeps track of categories whose loc_count >= THRESHOLD_COUNT
 		# own IP address
 		self.ip = ip
 
@@ -60,23 +60,73 @@ class Master(object):
 				loc_count[location] = defaultdict(int)
 			loc_count[location][search_term] += 1
 			
-			if loc_count[location][search_term] == THRESHOLD_COUNT and location not in cat_count:
-				cat_count[location][search_term] = 1
-				if len(cat_count[location].keys()) == THRESHOLD_CATEGORIES:
-					indices = cat_count[location].keys()
+			if loc_count[location][search_term] >= THRESHOLD_COUNT:
+				cat_count[location].add(search_term)
+				if len(cat_count[location]) >= THRESHOLD_CATEGORIES:
+					indices = list(cat_count[location])
 					data = get_data_for_indices(self.db, indices)
 
 					# TODO : CREATE THE REPLICA HERE IF NOT MADE ALREADY
 					# TODO : FIND REPLICA IP BY QUERYING
 					replica_ip, indices_present = query_metadatadb(self.db, location, indices)
-					if replica_ip is None:
-						# Assume we have one replica server per location
-						# TODO: remove break so that we consider multiple servers
-						for replica in replica_list[location]:
-							self.logger.info("Setting up the replica in "+location+ " at "+ replica)
-							print "Setting up the replica in "+location+ " at "+ replica
-							
-							break
+
+					if replica_ip is None or indices_present == False: # replica needs to be created or updated
+
+						if replica_ip is None: # replica not present already
+
+							# Assume we have one replica server per location
+							# TODO: remove break so that we consider multiple servers
+							for replica in replica_list[location]:
+								self.logger.info("Setting up the replica in "+location+ " at "+ replica)
+								print "Setting up the replica in "+ location + " at " + replica
+								replica_ip = replica
+
+								channel = grpc.insecure_channel(replica_ip)
+								stub = search_pb2_grpc.ReplicaCreationStub(channel)
+								request = search_pb2.ReplicaRequest(data = data, master_ip = self.ip, create = True)
+
+								
+								break
+
+						if replica_ip is not None and indices_present == False: # replica present but indices not present
+							self.logger.info("Adding indices to the replica in "+location+ " at "+ replica_ip)
+							print "Adding indices to the replica in "+ location + " at " + replica_ip
+							channel = grpc.insecure_channel(replica_ip)
+							stub = search_pb2_grpc.ReplicaCreationStub(channel)
+							request = search_pb2.ReplicaRequest(data = data, master_ip = self.ip, create = False)
+
+						# create or update the replica
+						try :
+							response = stub.CreateReplica(request, timeout = 10)
+							print(response)
+							# reset retries
+							retries = 0
+						except Exception as e:
+							if str(e.code()) == "StatusCode.DEADLINE_EXCEEDED":
+								print("DEADLINE_EXCEEDED!\n")
+								self.logger.error("Deadline exceed - timeout before response received")
+							if str(e.code()) == "StatusCode.UNAVAILABLE":
+								print("UNAVAILABLE!\n")
+								self.logger.error("Master server unavailable")
+							retries += 1
+							if retries > MAX_RETRIES:
+								self.logger.debug("Ready to serve as new master...")
+								master_serve(server, own_ip, 'backup', logging_level)
+								break;
+							else:
+								self.logger.debug("Retrying again #" + str(retries))
+								print("Retrying again #" + str(retries))
+
+					else: # replica present with indices
+						self.logger.debug("Received query: " + search_term, "redirecting to replica " + replica_ip + " at " + location)
+
+					#now query replica's db for urls
+					channel = grpc.insecure_channel(replica_ip)
+					stub = search_pb2_grpc.SearchStub(channel)
+					request = search_pb2.SearchRequest(query = search_term)
+					urls = stub.SearchForString(request)
+					print urls
+					return search_pb2.SearchResponse(urls=urls)
 
 		urls = querydb(self.db, search_term)
 		
