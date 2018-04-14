@@ -12,7 +12,7 @@ from argparse import ArgumentParser
 from bson import json_util
 from bson import BSON
 from pymongo.errors import BulkWriteError
-from pymongo import InsertOne, DeleteOne, ReplaceOne
+from pymongo import InsertOne, DeleteOne, ReplaceOne, UpdateOne
 
 # TODO : add time of creation/update
 # Metadata db
@@ -139,16 +139,15 @@ def addtodb(sender, data):
 	
 	requests = []
 	for rec in data:
-		requests.append(ReplaceOne({"name" : rec["name"]},rec, upsert=True))
+		print rec
+		requests.append(UpdateOne({"name" : rec["name"]}, {"$set": {"status" :"committed", "name" : rec["name"], "urls" : rec["urls"], "sim_words" : rec["sim_words"]}} , upsert=True))
 	
 	try:
-		#result = indices.insert_many(data, upsert=True)
 		result = indices.bulk_write(requests, ordered=False)
-		print "Added ", result.inserted_count
 	except BulkWriteError as exc:
 		print "Error: ", exc.details
 	
-	print indices.count()
+	print "Records: ", indices.count()
 	client.close()
 	return True
 

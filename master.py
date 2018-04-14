@@ -53,7 +53,7 @@ class Master(object):
 	def SearchForString(self, request, context):
 		search_term = request.query
 		location = request.location
-		print "Location: ", request.location
+		print "Location: ", request.location, "\nQuery:", search_term
 		loc_count = self.loc_count
 		cat_count = self.cat_count
 		# increment the values for counts
@@ -94,7 +94,7 @@ class Master(object):
 
 							elif replica_ip is not None and indices_present == False: # replica present but indices not present
 								self.logger.info("Adding indices to the replica in "+location+ " at "+ replica_ip)
-								print "Adding indices to the replica in "+ location + " at " + replica_ip
+								print "Adding indices " + str(indices_to_put) + "to the replica in "+ location + " at " + replica_ip
 								channel = grpc.insecure_channel(replica_ip)
 								stub = search_pb2_grpc.ReplicaCreationStub(channel)
 								request = search_pb2.ReplicaRequest(data = data, master_ip = self.ip, create = False)
