@@ -61,14 +61,14 @@ class Master(object):
 			loc_count[location][search_term] += 1
 			
 			if loc_count[location][search_term] == THRESHOLD_COUNT and location not in cat_count:
-				cat_count[location] = 1
-				if len(cat_count.keys()) == THRESHOLD_CATEGORIES:
-					indices = cat_count.keys()
+				cat_count[location][search_term] = 1
+				if len(cat_count[location].keys()) == THRESHOLD_CATEGORIES:
+					indices = cat_count[location].keys()
 					data = get_data_for_indices(self.db, indices)
 
 					# TODO : CREATE THE REPLICA HERE IF NOT MADE ALREADY
 					# TODO : FIND REPLICA IP BY QUERYING
-					replica_ip = query_metadatadb(self.db, location, indices)
+					replica_ip, indices_present = query_metadatadb(self.db, location, indices)
 					if replica_ip is None:
 						# Assume we have one replica server per location
 						# TODO: remove break so that we consider multiple servers
