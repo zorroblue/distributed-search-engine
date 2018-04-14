@@ -22,16 +22,28 @@ def add_to_metadatadb(sender, replica_ip, location, indices):
 	record["indices"] = indices
 
 	client = MongoClient('localhost', 27017)
-	db = client[sender+'_metadatadb']
-	metadata_coll = db.metadata
-	metadata_coll.insert(json.loads(json.dumps([record])))
-	print "Success"
+	if sender == 'master':
+		db = client.masterdb
+	else:
+		db = client.backupdb
 
+	metadata_coll = db.metadata
+	# unique index
+
+	metadata_coll.create_index( "location", unique = True)
+	try:
+		metadata_coll.insert(json.loads(json.dumps([record])))
+		print "Success"
+	except Exception as e:
+		print "Failed due to ", str(e)
 
 def query_metadatadb(sender, location, search_term):
 	client = MongoClient('localhost', 27017)
-
-	db = client[sender+'_metadatadb']
+	if sender == 'master':
+		db = client.masterdb
+	else:
+		db = client.backupdb
+	
 	metadata_coll = db.metadata
 	replica = metadata_coll.find_one({"location":location})
 	if replica is None:
@@ -44,13 +56,15 @@ def query_metadatadb(sender, location, search_term):
 	else:
 		return replica["replica_ip"], False
 
+add_to_metadatadb('master', '123.2.1.2', 'IND', ['approach', 'limit'])
+print query_metadatadb('master', 'IND', 'approach')
 
 def get_similar(sender, words):
 	client = MongoClient('localhost', 27017)
 	if sender == 'master':
 		db = client.masterdb
 	else:
-		db = client.replicadb
+		db = client.backupdb
 
 	indices = db.indices
 	responses = indices.find({"status" : "committed", "name" :{"$in": words}})
@@ -69,8 +83,8 @@ def get_data_for_indices(sender, indices):
 	client = MongoClient('localhost', 27017)
 	if sender == 'master':
 		db = client.masterdb
-	else:
-		db = client.replicadb
+	elif sender == 'backup':
+		db = client.backupdb
 	indices_coll = db.indices
 	responses = indices_coll.find({"status" : "committed", "name" :{"$in": indices}})
 	result =  json_util.dumps(responses, sort_keys=True, indent=4, default=json_util.default)
@@ -86,7 +100,7 @@ def querydb(sender, search_term):
 	if sender == 'master':
 		db = client.masterdb
 	else:
-		db = client.replicadb
+		db = client.backupdb
 
 	indices = db.indices
 	response = indices.find_one({"status" : "committed", "name" : search_term})
@@ -102,7 +116,7 @@ def addtodb(sender, indices):
 	if sender == 'master':
 		db = client.masterdb
 	else:
-		db = client.replicadb
+		db = client.backupdb
 
 	print "Adding to DB"
 	data = json.loads(indices.decode('string-escape').strip('"'))
@@ -119,7 +133,7 @@ def commitdb(sender):
 	if sender == 'master':
 		db = client.masterdb
 	else:
-		db = client.replicadb
+		db = client.backupdb
 	print "COMMIT"
 	indices = db.indices
 
@@ -144,7 +158,7 @@ def rollbackdb(sender):
 	if sender == 'master':
 		db = client.masterdb
 	else:
-		db = client.replicadb
+		db = client.backupdb
 	print "ROLLBACK"
 	indices = db.indices
 	status = indices.delete_many({'status' : 'pending'})

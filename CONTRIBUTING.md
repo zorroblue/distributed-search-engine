@@ -28,7 +28,7 @@
 	
 	`mongoimport --jsonArray -d masterdb -c indices data/indices.json` on master <br>
 
-	`mongoimport --jsonArray -d replicadb -c indices data/indices.json` on backup of master`
+	`mongoimport --jsonArray -d backupdb -c indices data/indices.json` on backup of master`
 
 
 * Set up the environment 

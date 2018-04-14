@@ -68,7 +68,7 @@ class Master(object):
 
 					# TODO : CREATE THE REPLICA HERE IF NOT MADE ALREADY
 					# TODO : FIND REPLICA IP BY QUERYING
-					replica_ip = query_metadatadb(self.db, location, indices)
+					replica_ip, indices_present = query_metadatadb(self.db, location, indices)
 					if replica_ip is None:
 						# Assume we have one replica server per location
 						# TODO: remove break so that we consider multiple servers
