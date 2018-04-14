@@ -247,7 +247,10 @@ def get_data_for_replica(replica_ip):
 	
 	# location, replica_ip, indices
 	client = MongoClient('localhost', 27017)
-	db = client.masterdb
+	if sender == 'master':
+		db = client.masterdb
+	else:
+		db = client.backupdb
 	
 	metadata_coll = db.metadata
 	replica = metadata_coll.find({"replica_ip":replica_ip})
@@ -264,7 +267,10 @@ def get_data_for_backup():
 	return get_data_for_indices('master', ["freakish"])
 	
 	client = MongoClient('localhost', 27017)
-	db = client.masterdb
+	if sender == 'master':
+		db = client.masterdb
+	else:
+		db = client.backupdb
 	indices_coll = db.indices
 	responses = indices_coll.find({"status" : "changed", "name" :{"$in": indices}})
 	print responses, len(responses)

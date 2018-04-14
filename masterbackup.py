@@ -1,5 +1,6 @@
 from concurrent import futures
 import time
+import thread
 import math
 
 from argparse import ArgumentParser
@@ -64,17 +65,7 @@ def master_serve(server, own_ip, db_name, logging_level):
 		server.stop(0)
 
 
-def run(master_server_ip, own_ip, crawler, logging_level, backup_port):
-	retries = 0
-	logger = init_logger('backup', logging_level)
-	server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
-	# add write service to backup server to handle database updates from crawler 
-	write_service = WriteService('backup', logger=logger)
-	search_pb2_grpc.add_DatabaseWriteServicer_to_server(write_service, server)
-	master = Master("MasterBackup", own_ip, logging_level)
-	search_pb2_grpc.add_ReplicaUpdateServicer_to_server(master, server)
-	server.add_insecure_port('[::]:'+ backup_port)
-	server.start()
+def sendHeartBeatMessage(master_server_ip, logger, crawler):
 	while True:
 		time.sleep(1)
 		channel = grpc.insecure_channel(master_server_ip)
@@ -87,12 +78,13 @@ def run(master_server_ip, own_ip, crawler, logging_level, backup_port):
 			# reset retries
 			retries = 0
 		except Exception as e:
-			if str(e.code()) == "StatusCode.DEADLINE_EXCEEDED":
-				print("DEADLINE_EXCEEDED!\n")
-				logger.error("Deadline exceed - timeout before response received")
-			if str(e.code()) == "StatusCode.UNAVAILABLE":
-				print("UNAVAILABLE!\n")
-				logger.error("Master server unavailable")
+			print str(e)
+			# if str(e.code()) == "StatusCode.DEADLINE_EXCEEDED":
+			# 	print("DEADLINE_EXCEEDED!\n")
+			# 	logger.error("Deadline exceed - timeout before response received")
+			# if str(e.code()) == "StatusCode.UNAVAILABLE":
+			# 	print("UNAVAILABLE!\n")
+			# 	logger.error("Master server unavailable")
 			retries += 1
 			if retries > MAX_RETRIES:
 				logger.debug("Ready to serve as new master...")
@@ -107,6 +99,30 @@ def run(master_server_ip, own_ip, crawler, logging_level, backup_port):
 			else:
 				logger.debug("Retrying again #" + str(retries))
 				print("Retrying again #" + str(retries))
+
+def run(master_server_ip, own_ip, crawler, logging_level, backup_port):
+	retries = 0
+	logger = init_logger('backup', logging_level)
+	server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
+	# add write service to backup server to handle database updates from crawler 
+	write_service = WriteService('backup', logger=logger)
+	search_pb2_grpc.add_DatabaseWriteServicer_to_server(write_service, server)
+	master = Master("backup", own_ip, logging_level)
+	search_pb2_grpc.add_ReplicaUpdateServicer_to_server(master, server)
+	server.add_insecure_port('[::]:'+ backup_port)
+	server.start()
+	try:
+		thread.start_new_thread(sendHeartBeatMessage, (master_server_ip, logger, crawler, ))
+	except Exception as e:
+		print str(e)
+		logger.error("Cannot start new thread due to " + str(e))
+	try:
+		while True:
+			time.sleep(_ONE_DAY_IN_SECONDS)
+	except KeyboardInterrupt:
+		logger.info("Shutting down server")
+		logging.shutdown()
+		server.stop(0)
 
 
 def main():
