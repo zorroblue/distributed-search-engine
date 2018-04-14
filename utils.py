@@ -95,7 +95,7 @@ def get_data_for_indices(sender, indices):
 
 	indices_coll = db.indices
 	responses = indices_coll.find({"status" : "committed", "name" :{"$in": indices}})
-	result =  json_util.dumps(responses, sort_keys=True, indent=4, default=json_util.default)
+	result =  json_util.dumps(responses)
 	return result, indices
 
 
@@ -119,7 +119,7 @@ def querydb(sender, search_term):
 		return response["urls"]
 	return []
 
-def addtodb(sender, indices):
+def addtodb(sender, data):
 	'''Add json string to db
 	'''
 	client = MongoClient('localhost', 27017)
@@ -131,8 +131,8 @@ def addtodb(sender, indices):
 		db = client[sender+"db"]
 
 	print "Adding to DB"
-	data = json.loads(indices.decode('string-escape').strip('"'))
-	#data = json_util.loads(indices)
+	if type(data) != type(list()):
+		data = json.loads(data.decode('string-escape').strip('"'))
 	indices = db.indices
 	result = indices.insert_many(data)
 	print "Added ", len(result.inserted_ids)
