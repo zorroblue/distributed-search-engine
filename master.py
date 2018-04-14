@@ -54,7 +54,8 @@ class Master(object):
 		loc_count = self.loc_count
 		cat_count = self.cat_count
 		# increment the values for counts
-		if location is not None and len(location) != 0:
+		replica_list = read_replica_filelist()
+		if location is not None and len(location) != 0 and location in replica_list:
 			if location not in loc_count:
 				loc_count[location] = defaultdict(int)
 			loc_count[location][search_term] += 1
@@ -63,18 +64,19 @@ class Master(object):
 				cat_count[location] = 1
 				if len(cat_count.keys()) == THRESHOLD_CATEGORIES:
 					indices = cat_count.keys()
-					# TODO: call similar words
-					data = get_data_for_indices(indices)
+					data = get_data_for_indices(self.db, indices)
 
 					# TODO : CREATE THE REPLICA HERE IF NOT MADE ALREADY
 					# TODO : FIND REPLICA IP BY QUERYING
-					
-					
-					replica_list = read_replica_filelist()
-					for replica in replica_list[location]:
-						self.logger.info("Setting up the replica in "+location+ " at "+ replica)
-						print "Setting up the replica in "+location+ " at "+ replica
-						
+					replica_ip = query_metadatadb(self.db, location, indices)
+					if replica_ip is None:
+						# Assume we have one replica server per location
+						# TODO: remove break so that we consider multiple servers
+						for replica in replica_list[location]:
+							self.logger.info("Setting up the replica in "+location+ " at "+ replica)
+							print "Setting up the replica in "+location+ " at "+ replica
+							
+							break
 
 		urls = querydb(self.db, search_term)
 		
@@ -91,12 +93,12 @@ class Master(object):
 		# replica on receiving set up request
 		indices = request.indices
 		master_ip = request.master_ip
-		createdb(master_ip, 'indices', data, self.db, 'indices', indices=indices)
+		#createdb(master_ip, 'indices', data, self.db, 'indices', indices=indices)
 
 
 def serve(db_name, ip, logging_level=logging.DEBUG, port='50051'):
 	server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
-	master = Master(db_name, logging_level, ip=ip)
+	master = Master(db_name, ip, logging_level)
 	search_pb2_grpc.add_SearchServicer_to_server(master, server)
 	search_pb2_grpc.add_HealthCheckServicer_to_server(master, server)
 	write_service = WriteService(db_name, logger=master.logger)
@@ -118,6 +120,7 @@ def main():
 	parser = build_parser()
 	options = parser.parse_args()
 	ip = options.ip
+	print ip
 	level = options.logging_level
 	logging_level = parse_level(level)
 	serve('master', ip, logging_level)

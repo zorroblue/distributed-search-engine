@@ -20,7 +20,6 @@ def add_to_metadatadb(sender, replica_ip, location, indices):
 	record["replica_ip"] = replica_ip
 	record["location"] = location
 	record["indices"] = indices
-	#record[""]
 
 	client = MongoClient('localhost', 27017)
 	db = client[sender+'_metadatadb']
@@ -28,10 +27,43 @@ def add_to_metadatadb(sender, replica_ip, location, indices):
 	metadata_coll.insert(json.loads(json.dumps([record])))
 	print "Success"
 
-add_to_metadatadb('master', '123', 'iND', ['asa'])
+
+def query_metadatadb(sender, location, search_term):
+	client = MongoClient('localhost', 27017)
+
+	db = client[sender+'_metadatadb']
+	metadata_coll = db.metadata
+	responses = metadata_coll.find({"location":location})
+	for response in responses:
+
+		if search_term in response["indices"]:
+			print response["indices"]
+			print search_term+ " found in "+ response["replica_ip"]
+			return response["replica_ip"]
+	return None
+
+
+def get_similar(sender, words):
+	client = MongoClient('localhost', 27017)
+	if sender == 'master':
+		db = client.masterdb
+	else:
+		db = client.replicadb
+
+	indices = db.indices
+	responses = indices.find({"status" : "committed", "name" :{"$in": words}})
+	client.close()
+
+	similar = set()
+	if responses is not None:
+		for response in responses:
+			similar.update(response["sim_words"])
+		
+	return list(similar)
 
 def get_data_for_indices(sender, indices):
-	# TODO get similar indices
+	indices = get_similar(indices)
+
 	client = MongoClient('localhost', 27017)
 	if sender == 'master':
 		db = client.masterdb
@@ -41,6 +73,8 @@ def get_data_for_indices(sender, indices):
 	responses = indices_coll.find({"status" : "committed", "name" :{"$in": indices}})
 	result =  json_util.dumps(responses, sort_keys=True, indent=4, default=json_util.default)
 	return result
+
+
 
 
 def querydb(sender, search_term):
@@ -160,20 +194,3 @@ def read_replica_filelist():
 	print replica_ips
 	return replica_ips
 
-def get_similar(sender, words):
-	client = MongoClient('localhost', 27017)
-	if sender == 'master':
-		db = client.masterdb
-	else:
-		db = client.replicadb
-
-	indices = db.indices
-	responses = indices.find({"status" : "committed", "name" :{"$in": words}})
-	client.close()
-
-	similar = set()
-	if responses is not None:
-		for response in responses:
-			similar.update(response["sim_words"])
-		
-	return similar
