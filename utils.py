@@ -95,7 +95,7 @@ def get_data_for_indices(sender, indices):
 		db = client[sender+"db"]
 
 	indices_coll = db.indices
-	print indices
+	# print indices, len(indices)
 	responses = indices_coll.find({"status" : "committed", "name" :{"$in": indices}})
 	# print "Works till here"
 	result =  json_util.dumps(responses)
@@ -244,3 +244,29 @@ def read_replica_filelist():
 
 def get_data_for_replica(replica_ip):
 	return get_data_for_indices('master', ["freakish"])
+	
+	# location, replica_ip, indices
+	client = MongoClient('localhost', 27017)
+	db = client.masterdb
+	
+	metadata_coll = db.metadata
+	replica = metadata_coll.find({"replica_ip":replica_ip})
+	
+	indices_coll = replica.indices
+	print indices, len(indices)
+	responses = indices_coll.find({"status" : "changed", "name" :{"$in": indices}})
+	print responses, len(responses)
+	result =  json_util.dumps(responses)
+	return result, indices
+
+	
+def get_data_for_backup():
+	return get_data_for_indices('master', ["freakish"])
+	
+	client = MongoClient('localhost', 27017)
+	db = client.masterdb
+	indices_coll = db.indices
+	responses = indices_coll.find({"status" : "changed", "name" :{"$in": indices}})
+	print responses, len(responses)
+	result =  json_util.dumps(responses)
+	return result, indices

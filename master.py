@@ -36,12 +36,16 @@ def build_parser():
 			dest='ip', help='IP Address',
 			required=True
 		)
+	parser.add_argument('--backup_ip',
+			dest='master_backup_ip', help='Master Backup IP Address',
+			required=True
+		)
 	return parser
 
 
 class Master(object):
 
-	def __init__(self, db_name, ip, logging_level=logging.DEBUG):
+	def __init__(self, db_name, ip, master_backup_ip,logging_level=logging.DEBUG):
 		self.db = db_name
 		self._HEALTH_CHECK_TIME = 0
 		self.logger = init_logger(db_name, logging_level)
@@ -49,6 +53,7 @@ class Master(object):
 		self.cat_count = defaultdict(set) # keeps track of categories whose loc_count >= THRESHOLD_COUNT
 		# own IP address
 		self.ip = ip
+		self.master_backup_ip = master_backup_ip
 
 	def SearchForString(self, request, context):
 		search_term = request.query
@@ -144,9 +149,12 @@ class Master(object):
 		return search_pb2.HealthCheckResponse(status = "STATUS: Master server up!")
 
 	def UpdateReplica(self, request, context):
-		self.logger.debug("Received Update Request from master")
-		print request.master_ip, request.data
+		self.logger.debug("Received Update Request from master " + request.master_ip)
+		# print request.master_ip, request.data
+		print self.db
 		return search_pb2.ReplicaStatus(status = 1)
+
+
 
 	def CreateReplica(self, request, context):
 		# replica on receiving set up request
@@ -160,26 +168,42 @@ class Master(object):
 
 def updateReplicaAndBackup(master):
 	while True:
+		# Backup
+		data, indices_to_put = get_data_for_backup()
+		print master.master_backup_ip
+		channel = grpc.insecure_channel(master.master_backup_ip)
+		stub = search_pb2_grpc.ReplicaUpdateStub(channel)
+		request = search_pb2.ReplicaRequest(data = data, master_ip = master.ip, create = 0)
+		try:
+			master.logger.info("Sending update message to master backup " + master.master_backup_ip)
+			response = stub.UpdateReplica(request)
+			print(response)
+			master.logger.info("Received " + str(response.status) + " from master backup " + master.master_backup_ip)
+		except Exception as e:
+			print str(e)
+			master.logger.error("Master backup " + master.master_backup_ip + " not reachable due to " + str(e))
+
+		# Replica
 		replica_ips = read_replica_filelist()
 		for location, replica_ip in replica_ips.items():
 			data, indices_to_put = get_data_for_replica(replica_ip)
-			# print location, replica_ip[0]
+			print location, replica_ip[0]
 			channel = grpc.insecure_channel(replica_ip[0])
 			stub = search_pb2_grpc.ReplicaUpdateStub(channel)
-			request = search_pb2.ReplicaRequest(data = data, master_ip = master.ip)
+			request = search_pb2.ReplicaRequest(data = data, master_ip = master.ip, create = 0)
 			try:
-				master.logger.info("Sending update message to replica")
+				master.logger.info("Sending update message to replica " + replica_ip[0])
 				response = stub.UpdateReplica(request)
 				print(response)
 				master.logger.info("Received " + str(response.status) + " from replica " + replica_ip[0])
 			except Exception as e:
-				print e
-				master.logger.error("Replica not reachable due to ")
+				print str(e)
+				master.logger.error("Replica " + replica_ip[0] + " not reachable due to " + str(e))
 		time.sleep(10)
 
-def serve(db_name, ip, logging_level=logging.DEBUG, port='50051'):
+def serve(db_name, ip, master_backup_ip, logging_level=logging.DEBUG, port='50051'):
 	server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
-	master = Master(db_name, ip, logging_level)
+	master = Master(db_name, ip, master_backup_ip, logging_level)
 	search_pb2_grpc.add_SearchServicer_to_server(master, server)
 	search_pb2_grpc.add_HealthCheckServicer_to_server(master, server)
 	write_service = WriteService(db_name, logger=master.logger)
@@ -208,10 +232,11 @@ def main():
 	parser = build_parser()
 	options = parser.parse_args()
 	ip = options.ip
-	print ip
+	master_backup_ip = options.master_backup_ip
+	print ip, master_backup_ip
 	level = options.logging_level
 	logging_level = parse_level(level)
-	serve('master', ip, logging_level)
+	serve('master', ip, master_backup_ip, logging_level)
 
 
 if __name__ == '__main__':

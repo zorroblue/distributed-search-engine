@@ -68,6 +68,8 @@ def run(master_server_ip, own_ip, logging_level, backup_port):
 	# add write service to backup server to handle database updates from crawler 
 	write_service = WriteService('backup', logger=logger)
 	search_pb2_grpc.add_DatabaseWriteServicer_to_server(write_service, server)
+	master = Master("MasterBackup", own_ip, logging_level)
+	search_pb2_grpc.add_ReplicaUpdateServicer_to_server(master, server)
 	server.add_insecure_port('[::]:'+ backup_port)
 	server.start()
 	while True:
