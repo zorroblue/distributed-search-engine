@@ -56,8 +56,6 @@ def query_metadatadb(sender, location, search_term):
 	else:
 		return replica["replica_ip"], False
 
-add_to_metadatadb('master', '123.2.1.2', 'IND', ['approach', 'limit'])
-print query_metadatadb('master', 'IND', 'approach')
 
 def get_similar(sender, words):
 	client = MongoClient('localhost', 27017)
