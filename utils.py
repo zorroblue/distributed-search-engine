@@ -11,7 +11,8 @@ import argparse
 from argparse import ArgumentParser
 from bson import json_util
 from bson import BSON
-
+from pymongo.errors import BulkWriteError
+from pymongo import InsertOne, DeleteOne, ReplaceOne
 
 # TODO : add time of creation/update
 # Metadata db
@@ -112,6 +113,7 @@ def querydb(sender, search_term):
 	else:
 		db = client[sender+"db"]
 
+	print "Searching ", sender
 	indices = db.indices
 	response = indices.find_one({"status" : "committed", "name" : search_term})
 	client.close()
@@ -134,8 +136,18 @@ def addtodb(sender, data):
 	if type(data) != type(list()):
 		data = json.loads(data.decode('string-escape').strip('"'))
 	indices = db.indices
-	result = indices.insert_many(data)
-	print "Added ", len(result.inserted_ids)
+	
+	requests = []
+	for rec in data:
+		requests.append(ReplaceOne({"name" : rec["name"]},rec, upsert=True))
+	
+	try:
+		#result = indices.insert_many(data, upsert=True)
+		result = indices.bulk_write(requests, ordered=False)
+		print "Added ", result.inserted_count
+	except BulkWriteError as exc:
+		print "Error: ", exc.details
+	
 	print indices.count()
 	client.close()
 	return True
