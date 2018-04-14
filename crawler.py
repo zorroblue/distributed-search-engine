@@ -141,6 +141,8 @@ def write_to_master_replica(master, replica, logging_level, lower=51, higher=70)
 
 	if retries < 3:
 		logger.info("COMMIT")
+	else
+		logger.info("FAILED")
 		# TODO rollback 
 		# not doing it now to progress further in the work
 		# PS if one of them fails, they will resync with the crawler. The crawler is aware of this as COMMIT isn't written till then.
