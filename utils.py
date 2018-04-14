@@ -140,16 +140,14 @@ def addtodb(sender, data):
 	requests = []
 	for rec in data:
 		print rec
-		requests.append(UpdateOne({"name" : rec["name"]}, {"$set": {"name" : rec["name"], "urls" : rec["urls"], "sim_words" : rec["sim_words"]}} , upsert=True))
+		requests.append(UpdateOne({"name" : rec["name"]}, {"$set": {"status" :"committed", "name" : rec["name"], "urls" : rec["urls"], "sim_words" : rec["sim_words"]}} , upsert=True))
 	
 	try:
-		#result = indices.insert_many(data, upsert=True)
 		result = indices.bulk_write(requests, ordered=False)
-		print "Added ", result.inserted_count
 	except BulkWriteError as exc:
 		print "Error: ", exc.details
 	
-	print indices.count()
+	print "Records: ", indices.count()
 	client.close()
 	return True
 
