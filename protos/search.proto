@@ -71,3 +71,12 @@ service ReplicaCreation {
 	rpc CreateReplica(ReplicaRequest) returns (ReplicaStatus);
 }
 
+// to update indices , replicaDB and masterBackupDB
+message DataUpdateRequest {
+	required string data = 1;
+	required string master_ip = 2;
+}
+
+service ReplicaUpdate {
+	rpc UpdateReplica(ReplicaRequest) returns (ReplicaStatus);
+}

@@ -2,6 +2,7 @@ from concurrent import futures
 import time
 import math
 import json
+import thread
 
 from argparse import ArgumentParser
 import argparse
@@ -18,6 +19,7 @@ from collections import defaultdict
 
 
 _ONE_DAY_IN_SECONDS = 60 * 60 * 24
+
 
 THRESHOLD_COUNT = 1
 THRESHOLD_CATEGORIES = 1
@@ -141,6 +143,11 @@ class Master(object):
 		self._HEALTH_CHECK_TIME += 1
 		return search_pb2.HealthCheckResponse(status = "STATUS: Master server up!")
 
+	def UpdateReplica(self, request, context):
+		self.logger.debug("Received Update Request from master")
+		print request.master_ip, request.data
+		return search_pb2.ReplicaStatus(status = 1)
+
 	def CreateReplica(self, request, context):
 		# replica on receiving set up request
 		data = json_util.loads(request.data)
@@ -151,6 +158,25 @@ class Master(object):
 		return search_pb2.ReplicaStatus(status=1)
 
 
+def updateReplicaAndBackup(master):
+	while True:
+		replica_ips = read_replica_filelist()
+		for location, replica_ip in replica_ips.items():
+			data, indices_to_put = get_data_for_replica(replica_ip)
+			# print location, replica_ip[0]
+			channel = grpc.insecure_channel(replica_ip[0])
+			stub = search_pb2_grpc.ReplicaUpdateStub(channel)
+			request = search_pb2.ReplicaRequest(data = data, master_ip = master.ip)
+			try:
+				master.logger.info("Sending update message to replica")
+				response = stub.UpdateReplica(request)
+				print(response)
+				master.logger.info("Received " + str(response.status) + " from replica " + replica_ip[0])
+			except Exception as e:
+				print e
+				master.logger.error("Replica not reachable due to ")
+		time.sleep(10)
+
 def serve(db_name, ip, logging_level=logging.DEBUG, port='50051'):
 	server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
 	master = Master(db_name, ip, logging_level)
@@ -158,10 +184,17 @@ def serve(db_name, ip, logging_level=logging.DEBUG, port='50051'):
 	search_pb2_grpc.add_HealthCheckServicer_to_server(master, server)
 	write_service = WriteService(db_name, logger=master.logger)
 	search_pb2_grpc.add_DatabaseWriteServicer_to_server(write_service, server)
+
 	server.add_insecure_port('[::]:'+ port)
 	server.start()
 	master.logger.info("Starting server")
 	print "Starting master"
+	try:
+		thread.start_new_thread(updateReplicaAndBackup, (master,))
+	except Exception as e:
+		print str(e)
+		master.logger.error("Cannot start new thread due to " + str(e))
+		
 	try:
 		while True:
 			time.sleep(_ONE_DAY_IN_SECONDS)

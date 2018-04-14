@@ -95,8 +95,11 @@ def get_data_for_indices(sender, indices):
 		db = client[sender+"db"]
 
 	indices_coll = db.indices
+	print indices
 	responses = indices_coll.find({"status" : "committed", "name" :{"$in": indices}})
+	# print "Works till here"
 	result =  json_util.dumps(responses)
+	# print "Here too"
 	return result, indices
 
 
@@ -239,3 +242,5 @@ def read_replica_filelist():
 		replica_ips[location].append(ip)
 	return replica_ips
 
+def get_data_for_replica(replica_ip):
+	return get_data_for_indices('master', ["freakish"])
