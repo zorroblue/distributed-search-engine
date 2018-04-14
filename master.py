@@ -119,7 +119,15 @@ class Master(object):
 						channel = grpc.insecure_channel(replica_ip)
 						stub = search_pb2_grpc.SearchStub(channel)
 						request = search_pb2.SearchRequest(query = search_term)
-						response = stub.SearchForString(request)
+						try:
+							response = stub.SearchForString(request)
+						except Exception as e:
+							print str(e)
+							self.logger.error("Replica could not be contacted, falling back to master")
+							urls = querydb(self.db, search_term)
+							print urls
+							return search_pb2.SearchResponse(urls=urls)
+
 						return search_pb2.SearchResponse(urls=response.urls)
 
 		urls = querydb(self.db, search_term)
