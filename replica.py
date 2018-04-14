@@ -61,7 +61,7 @@ def run(name, ip, port, logging_level):
 	search_pb2_grpc.add_SearchServicer_to_server(master, server)
 	search_pb2_grpc.add_HealthCheckServicer_to_server(master, server)
 	search_pb2_grpc.add_ReplicaUpdateServicer_to_server(master, server)
-
+	search_pb2_grpc.add_ReplicaCreationServicer_to_server(master, server)
 	print("Starting replica "+name)
 	server.add_insecure_port('[::]:'+ port)
 	server.start()

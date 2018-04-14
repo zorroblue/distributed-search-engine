@@ -35,7 +35,7 @@ def build_parser():
 			default='50052',
 			required=False)
 	parser.add_argument('--ip',
-			dest='port', help='IP Address',
+			dest='ip', help='IP Address',
 			required=True)
 
 	choices = ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']

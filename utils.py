@@ -11,7 +11,8 @@ import argparse
 from argparse import ArgumentParser
 from bson import json_util
 from bson import BSON
-
+from pymongo.errors import BulkWriteError
+from pymongo import InsertOne, DeleteOne, ReplaceOne
 
 # TODO : add time of creation/update
 # Metadata db
@@ -24,8 +25,10 @@ def add_to_metadatadb(sender, replica_ip, location, indices):
 	client = MongoClient('localhost', 27017)
 	if sender == 'master':
 		db = client.masterdb
-	else:
+	elif sender == 'backup':
 		db = client.backupdb
+	else:
+		db = client[sender+"db"]
 
 	metadata_coll = db.metadata
 	# unique index
@@ -34,6 +37,7 @@ def add_to_metadatadb(sender, replica_ip, location, indices):
 	try:
 		metadata_coll.insert(json.loads(json.dumps([record])))
 		print "Success"
+		print "Added ", str(record)," to metadata of ",sender 
 	except Exception as e:
 		print "Failed due to ", str(e)
 
@@ -41,8 +45,10 @@ def query_metadatadb(sender, location, search_term):
 	client = MongoClient('localhost', 27017)
 	if sender == 'master':
 		db = client.masterdb
-	else:
+	elif sender == 'backup':
 		db = client.backupdb
+	else:
+		db = client[sender+"db"]
 	
 	metadata_coll = db.metadata
 	replica = metadata_coll.find_one({"location":location})
@@ -61,8 +67,10 @@ def get_similar(sender, words):
 	client = MongoClient('localhost', 27017)
 	if sender == 'master':
 		db = client.masterdb
-	else:
+	elif sender == 'backup':
 		db = client.backupdb
+	else:
+		db = client[sender+"db"]
 
 	indices = db.indices
 	responses = indices.find({"status" : "committed", "name" :{"$in": words}})
@@ -83,10 +91,13 @@ def get_data_for_indices(sender, indices):
 		db = client.masterdb
 	elif sender == 'backup':
 		db = client.backupdb
+	else:
+		db = client[sender+"db"]
+
 	indices_coll = db.indices
 	responses = indices_coll.find({"status" : "committed", "name" :{"$in": indices}})
-	result =  json_util.dumps(responses, sort_keys=True, indent=4, default=json_util.default)
-	return result
+	result =  json_util.dumps(responses)
+	return result, indices
 
 
 
@@ -97,9 +108,12 @@ def querydb(sender, search_term):
 	client = MongoClient('localhost', 27017)
 	if sender == 'master':
 		db = client.masterdb
-	else:
+	elif sender == 'backup':
 		db = client.backupdb
+	else:
+		db = client[sender+"db"]
 
+	print "Searching ", sender
 	indices = db.indices
 	response = indices.find_one({"status" : "committed", "name" : search_term})
 	client.close()
@@ -107,20 +121,33 @@ def querydb(sender, search_term):
 		return response["urls"]
 	return []
 
-def addtodb(sender, indices):
+def addtodb(sender, data):
 	'''Add json string to db
 	'''
 	client = MongoClient('localhost', 27017)
 	if sender == 'master':
 		db = client.masterdb
-	else:
+	elif sender == 'backup':
 		db = client.backupdb
+	else:
+		db = client[sender+"db"]
 
 	print "Adding to DB"
-	data = json.loads(indices.decode('string-escape').strip('"'))
+	if type(data) != type(list()):
+		data = json.loads(data.decode('string-escape').strip('"'))
 	indices = db.indices
-	result = indices.insert_many(data)
-	print "Added ", len(result.inserted_ids)
+	
+	requests = []
+	for rec in data:
+		requests.append(ReplaceOne({"name" : rec["name"]},rec, upsert=True))
+	
+	try:
+		#result = indices.insert_many(data, upsert=True)
+		result = indices.bulk_write(requests, ordered=False)
+		print "Added ", result.inserted_count
+	except BulkWriteError as exc:
+		print "Error: ", exc.details
+	
 	print indices.count()
 	client.close()
 	return True
@@ -130,8 +157,11 @@ def commitdb(sender):
 	client = MongoClient('localhost', 27017)
 	if sender == 'master':
 		db = client.masterdb
-	else:
+	elif sender == 'backup':
 		db = client.backupdb
+	else:
+		db = client[sender+"db"]
+
 	print "COMMIT"
 	indices = db.indices
 
@@ -155,8 +185,11 @@ def rollbackdb(sender):
 	client = MongoClient('localhost', 27017)
 	if sender == 'master':
 		db = client.masterdb
-	else:
+	elif sender == 'backup':
 		db = client.backupdb
+	else:
+		db = client[sender+"db"]
+
 	print "ROLLBACK"
 	indices = db.indices
 	status = indices.delete_many({'status' : 'pending'})
@@ -205,7 +238,6 @@ def read_replica_filelist():
 		if location not in replica_ips:
 			replica_ips[location] = []
 		replica_ips[location].append(ip)
-	print replica_ips
 	return replica_ips
 
 def get_data_for_replica(replica_ip):
