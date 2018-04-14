@@ -162,11 +162,11 @@ def updateReplicaAndBackup(master):
 	while True:
 		replica_ips = read_replica_filelist()
 		for location, replica_ip in replica_ips.items():
-			indices = get_data_for_replica(replica_ip)
+			data, indices_to_put = get_data_for_replica(replica_ip)
 			# print location, replica_ip[0]
 			channel = grpc.insecure_channel(replica_ip[0])
 			stub = search_pb2_grpc.ReplicaUpdateStub(channel)
-			request = search_pb2.ReplicaRequest(data = indices, master_ip = master.ip)
+			request = search_pb2.ReplicaRequest(data = data, master_ip = master.ip)
 			try:
 				master.logger.info("Sending update message to replica")
 				response = stub.UpdateReplica(request)
