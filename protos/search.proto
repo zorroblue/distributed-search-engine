@@ -70,3 +70,6 @@ service ReplicaCreation {
 	rpc CreateReplica(ReplicaRequest) returns (ReplicaStatus);
 }
 
+service ReplicaUpdate {
+	rpc UpdateReplica(ReplicaRequest) returns (ReplicaStatus);
+}

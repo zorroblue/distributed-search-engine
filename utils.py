@@ -76,7 +76,7 @@ def get_similar(sender, words):
 	return list(similar)
 
 def get_data_for_indices(sender, indices):
-	indices = get_similar(indices)
+	indices = get_similar(sender, indices)
 
 	client = MongoClient('localhost', 27017)
 	if sender == 'master':
@@ -208,3 +208,5 @@ def read_replica_filelist():
 	print replica_ips
 	return replica_ips
 
+def get_data_for_replica(replica_ip):
+	return get_data_for_indices('master', ["freakish"])

@@ -44,6 +44,10 @@ def build_parser():
 			required=True)
 	return parser
 
+# def UpdateReplica(self, request, context):
+# 	self.logger.debug("Received Update Request from master")
+# 	self.logger.debug(request.data, request.master_ip)
+# 	return search_pb2.ReplicaStatus(status = 1)
 
 def run(name, ip, port, logging_level):
 	logger = init_logger(name, logging_level)
@@ -56,6 +60,8 @@ def run(name, ip, port, logging_level):
 	master = Master(name, ip, logging_level)
 	search_pb2_grpc.add_SearchServicer_to_server(master, server)
 	search_pb2_grpc.add_HealthCheckServicer_to_server(master, server)
+	search_pb2_grpc.add_ReplicaUpdateServicer_to_server(master, server)
+
 	print("Starting replica "+name)
 	server.add_insecure_port('[::]:'+ port)
 	server.start()
