@@ -189,12 +189,13 @@ def serve(db_name, ip, logging_level=logging.DEBUG, port='50051'):
 	server.start()
 	master.logger.info("Starting server")
 	print "Starting master"
+	'''
 	try:
 		thread.start_new_thread(updateReplicaAndBackup, (master,))
 	except Exception as e:
 		print str(e)
 		master.logger.error("Cannot start new thread due to " + str(e))
-		
+	'''	
 	try:
 		while True:
 			time.sleep(_ONE_DAY_IN_SECONDS)

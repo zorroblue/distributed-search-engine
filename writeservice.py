@@ -8,6 +8,21 @@ class WriteService(object):
 		self.db = db_name
 		self.logger = logger
 
+	def WriteIndicesToTable(self, request, context):
+		data = json.dumps(request.data)
+		logger = self.logger
+		try:
+			if logger:
+				logger.info("Adding to "+self.db+" database")
+			addtodb(self.db, data)
+			logger.info("Write operation success")
+			return search_pb2.Acknowledgement(status=1)
+		except Exception as e:
+			print(str(e))
+			logger.info("Write operation failed due to "+str(e))
+			return search_pb2.Acknowledgement(status=0)
+
+	# 2 phase commits
 	def QueryToCommit(self, request, context):
 		data = json.dumps(request.data)
 		logger = self.logger
