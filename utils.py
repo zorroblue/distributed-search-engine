@@ -34,8 +34,11 @@ def add_to_metadatadb(sender, replica_ip, location, indices):
 	# unique index
 
 	metadata_coll.create_index( "location", unique = True)
+	#rec = json.loads(json.dumps([record]))
+
 	try:
-		metadata_coll.insert(json.loads(json.dumps([record])))
+		#metadata_coll.insert()
+		metadata_coll.update_one({"location" : location}, {"$set": {"location" : location,  "replica_ip" : replica_ip, "indices" : indices}} , upsert=True)
 		print "Success"
 		print "Added ", str(record)," to metadata of ",sender 
 	except Exception as e:

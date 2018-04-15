@@ -104,6 +104,7 @@ class Master(object):
 								stub = search_pb2_grpc.ReplicaCreationStub(channel)
 								request = search_pb2.ReplicaRequest(data = data, master_ip = self.ip, create = False)
 								# TODO: update the entry in the metadata table
+								add_to_metadatadb(self.db, replica_ip, location, indices_to_put)
 
 							# create or update the replica
 							try :
