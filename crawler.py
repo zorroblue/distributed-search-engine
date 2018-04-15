@@ -1,6 +1,7 @@
 from concurrent import futures
 import time
 import math
+import thread
 
 from argparse import ArgumentParser
 import argparse
@@ -20,6 +21,7 @@ from bson import json_util
 from bson import BSON
 
 _ONE_DAY_IN_SECONDS = 60 * 60 * 24
+MAX_RETRIES = 3
 
 
 def build_parser():
@@ -33,6 +35,11 @@ def build_parser():
 			default='localhost:50052',
 			help='backup IP address',
 			required=False)
+	parser.add_argument('--port',
+			dest='port',
+			default='50060',
+			help='Port',
+			required=False)
 	choices = ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']
 	parser.add_argument('--logging',
 			dest='logging_level', help='Logging level',
@@ -42,136 +49,78 @@ def build_parser():
 	return parser
 
 
-def write_to_master_backup(master, backup, logging_level, lower=51, higher=70):
-	# initialize logger
-	logger = init_logger('crawler', logging_level)
-	# generate data
-	indices_list = generate_indices('pending', lower, higher)
-	
-	# initiate 2 phase commit protocol
-	
-	# PHASE 1
-	logger.debug("Initiate 2 phase commit protocol")
-	print "Phase 1: Prepare"
-	logger.debug("Starting Phase 1: Prepare")
+class Crawler(object):
+	def __init__(self, master, backup, logging_level, data=None):
+		# initialize logger
+		self.logger = init_logger('crawler', logging_level)
+		self.master = master
+		self.backup = backup
+		self.data = data
+		# TODO: add sync between backup and crawler
 
-	master_vote = None
-	backup_vote = None
-	
-	master_channel = grpc.insecure_channel(master)
-	master_stub = search_pb2_grpc.DatabaseWriteStub(master_channel)
-	
-	
+	def MasterChange(self, request, context):
+		self.master = self.backup
+		self.logger.info("Changed master ip to "+ self.master)
+		return search_pb2.Acknowledgement(status=1)
 
-	backup_channel = grpc.insecure_channel(backup)
-	backup_stub = search_pb2_grpc.DatabaseWriteStub(backup_channel)
+	def write_to_master(self):
+		if self.data is None:
+			self.data = generate_indices('pending', 51, 70)
 
-	try:
-		indices = json.dumps(indices_list)
-		request = search_pb2.CommitRequest(data=indices)
-		logger.info("Send COMMIT_REQUEST to master")
-		master_vote = master_stub.QueryToCommit(request)
-		print "Master Status: ", master_vote.status
-		if master_vote.status == 1:
-			logger.info("Received AGREED from master")
-		else:
-			logger.info("Received ABORT from master")
-	except Exception as e:
-		print str(e)
-		print e.code()
-		logger.error("Master not reachable due to "+ str(e.code()))
-
-	try:
-		indices = json.dumps(indices_list)
-		request = search_pb2.CommitRequest(data=indices)
-		logger.info("Send COMMIT_REQUEST to backup")
-		backup_vote = backup_stub.QueryToCommit(request)
-		print "Backup Status: ", backup_vote.status
-		if backup_vote.status == 1:
-			logger.info("Received AGREED from backup")
-		else:
-			logger.info("Received ABORT from backup")
-	except Exception as e:
-		print str(e)
-		print e.code()
-		logger.error("Backup not reachable due to "+ str(e.code()))
-	
-	# PHASE 2
-	print "Phase 2: Prepare"
-	logger.debug("Starting Phase 2: Commit")
-
-	if master_vote == None or backup_vote == None or backup_vote.status == 0 or master_vote.status == 0:
-		try:
-			request = search_pb2.CommitStatusUpdate(code=search_pb2.ROLL_BACK)
-			try:
-				logger.info("Sending ROLL_BACK to master")
-				master_ack = master_stub.CommitPhase(request)
-			except Exception as e:
-				print str(e)
-				logger.info("Master not able to receive ROLL_BACK due to "+ str(e.code()))
-			
-			try:
-				logger.info("Sending ROLL_BACK to backup")
-				backup_ack = backup_stub.CommitPhase(request)
-			except Exception as e:
-				print str(e)
-				logger.info("backup not able to receive ROLL_BACK due to "+ str(e.code()))
-
-		except Exception as e:
-			print e.code()
-		logger.info("Rolled back transaction")
-		return False
-
-	# Commit Phase
-	request = search_pb2.CommitStatusUpdate(code=search_pb2.COMMIT)
-	master_ack_received = False
-	backup_ack_received = False
-	retries = 0
-	
-	while (not master_ack_received or not backup_ack_received) and retries < 3: 
-		if retries > 0:
-			logger.info("Retrying")
-		if not master_ack_received:
-			try:
-				logger.info("Sending COMMIT to master")
-				master_ack = master_stub.CommitPhase(request)
-				master_ack_received = True
-			except Exception as e:
-				logger.info("Master failed to receive due to "+ str(e.code()))
-		if not backup_ack_received:
-			try:
-				logger.info("Sending COMMIT to backup")
-				backup_ack = backup_stub.CommitPhase(request)
-				backup_ack_received = True
-			except Exception as e:
-				logger.info("Backup failed to receive due to "+ str(e.code()))
-		retries+=1
-		print master_ack_received, backup_ack_received
+		logger = self.logger
+		# send to master
+		master_channel = grpc.insecure_channel(self.master)
+		master_stub = search_pb2_grpc.DatabaseWriteStub(master_channel)
+		logger.info("Sending data to master")
+		#try:
+		request = search_pb2.CommitRequest(data=json.dumps(self.data))
+		response = master_stub.WriteIndicesToTable(request)
+		logger.info("Operation success")
+		print "Done"
 		
 
-	if retries < 3:
-		logger.info("COMMIT")
-	else:
-		logger.info("FAILED")
-		# TODO rollback 
-		# not doing it now to progress further in the work
-		# PS if one of them fails, they will resync with the crawler. The crawler is aware of this as COMMIT isn't written till then.
+def pushWrite(crawler):
+	while True:
+		query = raw_input("Do you want to push the write(Y/N): ")
+		query = query.strip()
+		if query == 'N' or query == 'No':
+			break
+		elif query == 'Y' or query == 'Yes':
+			crawler.write_to_master()
+			break
 
-	print "Phase 2:"
-	print "Master status", master_ack.status
-	print "backup status", backup_ack.status
-	return master_ack.status == 1 and backup_ack.status == 1
+def run(master, backup, logging_level, port, data=None):
+	server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
+	# add write service to backup server to handle database updates from crawler 
+	crawler = Crawler(master, backup, logging_level, data)
+	search_pb2_grpc.add_LeaderNoticeServicer_to_server(crawler, server)
+	server.add_insecure_port('[::]:'+ port)
+	print "Started crawler"
+	crawler.logger.info("Starting server")
+	# set up query for writes
+	try:
+		thread.start_new_thread(pushWrite, (crawler,))
+	except Exception as e:
+		print str(e)
+		crawler.logger.error("Cannot start new thread due to " + str(e))
 
+	server.start()
+	try:
+		while True:
+			time.sleep(_ONE_DAY_IN_SECONDS)
+	except KeyboardInterrupt:
+		crawler.logger.info("Shutting down server")
+		logging.shutdown()
+		server.stop(0)
 
 def main():
 	parser = build_parser()
 	options = parser.parse_args()
 	master = options.master
 	backup = options.backup
+	port = options.port
 	logging_level = parse_level(options.logging_level)
-	status = write_to_master_backup(master=master, backup=backup, logging_level=logging_level)
-	if status:
-		print "Write successful"
+	run(master, backup, logging_level, port, data=None)
 
 if __name__ == '__main__':
 	main()

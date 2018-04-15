@@ -34,14 +34,17 @@ def add_to_metadatadb(sender, replica_ip, location, indices):
 	# unique index
 
 	metadata_coll.create_index( "location", unique = True)
+	#rec = json.loads(json.dumps([record]))
+
 	try:
-		metadata_coll.insert(json.loads(json.dumps([record])))
+		#metadata_coll.insert()
+		metadata_coll.update_one({"location" : location}, {"$set": {"location" : location,  "replica_ip" : replica_ip, "indices" : indices}} , upsert=True)
 		print "Success"
 		print "Added ", str(record)," to metadata of ",sender 
 	except Exception as e:
 		print "Failed due to ", str(e)
 
-def removefrom_metadatadb(sender, replica_ip, words):
+def query_metadatadb_indices(sender, replica_ip):
 	client = MongoClient('localhost', 27017)
 	if sender == 'master':
 		db = client.masterdb
@@ -50,22 +53,17 @@ def removefrom_metadatadb(sender, replica_ip, words):
 	else:
 		db = client[sender+"db"]
 	
-	entries = db.metadata.find({'replica_ip' : replica_ip})
-	db.metadata.remove({'replica_ip' : replica_ip})
+	entry = db.metadata.find_one({'replica_ip' : replica_ip})
 
-	for entry in entries:
-		replica_words = entry['indices']
-		loc = entry['location']
-		for w in words:
-			if w in replica_words:
-				replica_words.remove(w)
-		db.metadata.insert({'replica_ip': replica_ip, 'location' : loc, 'indices' : replica_words})
-
+	words = []
+	if entry is not None:
+		for word in entry['indices']:
+			words.append(word)
 	client.close()
-	return True
+	return words
 
 
-def get_replica_ips_from_metadatadb(sender):
+def get_replica_ips_locs_from_metadatadb(sender):
 	client = MongoClient('localhost', 27017)
 	if sender == 'master':
 		db = client.masterdb
@@ -74,11 +72,11 @@ def get_replica_ips_from_metadatadb(sender):
 	else:
 		db = client[sender+"db"]
 
-	responses = db.metadata.find({}, {replica_ip:1, _id:0})
+	responses = db.metadata.find({}, {'replica_ip':1, 'location':1, '_id':0})
 	client.close()
 	result = []
 	for response in responses:
-		result.append(response["replica_ip"])
+		result.append((response["replica_ip"], response["location"]))
 	return result
 
 def query_metadatadb(sender, location, search_term):
@@ -176,7 +174,7 @@ def getallwords(sender):
 		db = client[sender+"db"]
 
 	indices = db.indices
-	responses = indices.find({}, {name:1, _id: 0})
+	responses = indices.find({}, {'name':1, '_id': 0})
 	client.close()
 
 	words = []

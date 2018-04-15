@@ -40,8 +40,15 @@ service Search {
 }
 
 service DatabaseWrite {
+	rpc WriteIndicesToTable(CommitRequest) returns (Acknowledgement) {}
 	rpc QueryToCommit(CommitRequest) returns (CommitVote) {}
 	rpc CommitPhase(CommitStatusUpdate) returns (Acknowledgement) {}
+}
+
+
+message IsMaster {
+	// message sent by the backup to crawler to inform of the change in master
+	optional string ip = 1; // left optional, not passing anyways in the application
 }
 
 message HealthCheckRequest {
@@ -55,6 +62,11 @@ message HealthCheckResponse {
 
 service HealthCheck {
  	rpc Check(HealthCheckRequest) returns (HealthCheckResponse);
+}
+
+service LeaderNotice {
+	// rpc by masterbackup to crawler to inform change in master
+ 	rpc MasterChange(IsMaster) returns (Acknowledgement);
 }
 
 // for the dynamic replication
@@ -72,6 +84,14 @@ service ReplicaCreation {
 	rpc CreateReplica(ReplicaRequest) returns (ReplicaStatus);
 }
 
+// to update indices , replicaDB and masterBackupDB
+message DataUpdateRequest {
+	required string data = 1;
+	required string master_ip = 2;
+}
+
 service ReplicaUpdate {
 	rpc UpdateReplica(ReplicaRequest) returns (ReplicaStatus);
 }
+
+
