@@ -1,5 +1,3 @@
-from __future__ import print_function
-
 from argparse import ArgumentParser
 import random
 
@@ -13,23 +11,30 @@ def build_parser():
 	parser.add_argument('--master',
 			dest='master', help='Master IP address',
 			default='localhost:50051',
-			required=False)
-	parser.add_argument('--replica',
-			dest='replica',
-			default='localhost:50051',
-			help='Replica IP address',
-			required=False)
+			required=True)
+	parser.add_argument('--backup',
+			dest='backup',
+			default='localhost:50063',
+			help='Backup IP address',
+			required=True)
 	return parser
 
 
-def run(server_ip):
-	channel = grpc.insecure_channel(server_ip)
+def run(master_server_ip, backup_server_ip):
+	channel = grpc.insecure_channel(master_server_ip)
 	stub = search_pb2_grpc.SearchStub(channel)
+	
+	backup_channel = grpc.insecure_channel(backup_server_ip)
+	backup_stub = search_pb2_grpc.SearchStub(backup_channel)
 	while True:
 		query = raw_input("Type your query : ")
 		location = raw_input("Type your location: ")
 		request = search_pb2.SearchRequest(query=query.strip(), location=location.strip())
-		response = stub.SearchForString(request)
+		try:
+			response = stub.SearchForString(request)
+		except Exception as e:
+			response = backup_stub.SearchForString(request)
+		
 		print(response)
 
 
@@ -37,7 +42,8 @@ def main():
 	parser = build_parser()
 	options = parser.parse_args()
 	master_server_ip = options.master
-	run(master_server_ip)
+	backup_server_ip = options.backup
+	run(master_server_ip, backup_server_ip)
 
 
 if __name__ == '__main__':
