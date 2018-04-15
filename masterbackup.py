@@ -95,7 +95,7 @@ def sendHeartBeatMessage(master_server_ip, logger, crawler):
 				response = stub.MasterChange(request, timeout=10)
 				print "Logger returned ", response.status
 				master_serve(server, own_ip, 'backup', logging_level)
-				break;
+				break
 			else:
 				logger.debug("Retrying again #" + str(retries))
 				print("Retrying again #" + str(retries))

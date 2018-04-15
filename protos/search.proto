@@ -84,5 +84,5 @@ service ReplicaCreation {
 }
 
 service ReplicaUpdate {
-	rpc UpdateReplica(ReplicaRequest) returns (ReplicaResponse);
+	rpc UpdateReplica(ReplicaRequest) returns (ReplicaStatus);
 }
