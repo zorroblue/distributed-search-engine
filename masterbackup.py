@@ -7,7 +7,7 @@ from argparse import ArgumentParser
 import random
 import time
 
-from master import Master
+from master import Master, updateReplicaAndBackup, sendHeartbeatsToReplicas
 import grpc
 import search_pb2
 import search_pb2_grpc
@@ -59,6 +59,19 @@ def master_serve(server, own_ip, db_name, logging_level):
 	search_pb2_grpc.add_SearchServicer_to_server(master, server)
 	search_pb2_grpc.add_HealthCheckServicer_to_server(master, server)
 	print("Starting master")
+	
+	try:
+		thread.start_new_thread(updateReplicaAndBackup, (master,))
+	except Exception as e:
+		print str(e)
+		master.logger.error("Cannot start new thread due to " + str(e))
+	
+	try:
+		thread.start_new_thread(sendHeartbeatsToReplicas, (db_name, master,))
+	except Exception as e:
+		print str(e)
+		master.logger.error("Cannot start new thread due to " + str(e))
+
 	try:
 		while True:
 			time.sleep(_ONE_DAY_IN_SECONDS)

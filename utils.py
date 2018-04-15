@@ -16,7 +16,7 @@ from pymongo import InsertOne, DeleteOne, ReplaceOne, UpdateOne
 
 # TODO : add time of creation/update
 # Metadata db
-def add_to_metadatadb(sender, replica_ip, location, indices):
+def add_to_metadatadb(sender, replica_ip, location, indices, verbose=True):
 	record = {}
 	record["replica_ip"] = replica_ip
 	record["location"] = location
@@ -37,13 +37,14 @@ def add_to_metadatadb(sender, replica_ip, location, indices):
 
 	try:
 		metadata_coll.update_one({"location" : location}, {"$set": {"location" : location,  "replica_ip" : replica_ip, "indices" : list(indices)}} , upsert=True)
-		print "Success"
-		print "Added ", str(record)," to metadata of ",sender 
+		if(verbose):
+			print "Success"
+			print "Added ", str(record)," to metadata of ",sender 
 	except Exception as e:
 		print "Failed due to ", str(e)
 
 
-def query_metadatadb_indices(sender, replica_ip):
+def query_metadatadb_indices(sender, location):
 	client = MongoClient('localhost', 27017)
 	if sender == 'master':
 		db = client.masterdb
@@ -52,7 +53,7 @@ def query_metadatadb_indices(sender, replica_ip):
 	else:
 		db = client[sender+"db"]
 	
-	entry = db.metadata.find_one({'replica_ip' : replica_ip})
+	entry = db.metadata.find_one({'location' : location})
 
 	words = []
 	if entry is not None:
@@ -61,6 +62,20 @@ def query_metadatadb_indices(sender, replica_ip):
 	client.close()
 	return words
 
+def update_replica_ip(sender, location, new_replica_ip):
+	client = MongoClient('localhost', 27017)
+	if sender == 'master':
+		db = client.masterdb
+	elif sender == 'backup':
+		db = client.backupdb
+	else:
+		db = client[sender+"db"]
+	
+	try:
+		db.metadata.update_one({"location" : location}, {"$set": {"replica_ip" : new_replica_ip}} , upsert=True)
+	except Exception as e:
+		print "Failed due to ", str(e)
+	client.close()
 
 def get_replica_ips_locs_from_metadatadb(sender):
 	client = MongoClient('localhost', 27017)
