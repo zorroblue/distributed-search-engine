@@ -57,6 +57,7 @@ message HealthCheckRequest {
 
 message HealthCheckResponse {
 	required string status = 1;
+	optional string data = 2;
 }
 
 service HealthCheck {
