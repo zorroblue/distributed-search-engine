@@ -41,6 +41,46 @@ def add_to_metadatadb(sender, replica_ip, location, indices):
 	except Exception as e:
 		print "Failed due to ", str(e)
 
+def removefrom_metadatadb(sender, replica_ip, words):
+	client = MongoClient('localhost', 27017)
+	if sender == 'master':
+		db = client.masterdb
+	elif sender == 'backup':
+		db = client.backupdb
+	else:
+		db = client[sender+"db"]
+	
+	entries = db.metadata.find({'replica_ip' : replica_ip})
+	db.metadata.remove({'replica_ip' : replica_ip})
+
+	for entry in entries:
+		replica_words = entry['indices']
+		loc = entry['location']
+		for w in words:
+			if w in replica_words:
+				replica_words.remove(w)
+		db.metadata.insert({'replica_ip': replica_ip, 'location' : loc, 'indices' : replica_words})
+
+	client.close()
+	return True
+
+
+def get_replica_ips_from_metadatadb(sender):
+	client = MongoClient('localhost', 27017)
+	if sender == 'master':
+		db = client.masterdb
+	elif sender == 'backup':
+		db = client.backupdb
+	else:
+		db = client[sender+"db"]
+
+	responses = db.metadata.find({}, {replica_ip:1, _id:0})
+	client.close()
+	result = []
+	for response in responses:
+		result.append(response["replica_ip"])
+	return result
+
 def query_metadatadb(sender, location, search_term):
 	client = MongoClient('localhost', 27017)
 	if sender == 'master':
@@ -124,6 +164,28 @@ def querydb(sender, search_term):
 		return response["urls"]
 	return []
 
+def getallwords(sender):
+	'''Query on mongodb database for all name words
+	'''
+	client = MongoClient('localhost', 27017)
+	if sender == 'master':
+		db = client.masterdb
+	elif sender == 'backup':
+		db = client.backupdb
+	else:
+		db = client[sender+"db"]
+
+	indices = db.indices
+	responses = indices.find({}, {name:1, _id: 0})
+	client.close()
+
+	words = []
+	if responses is not None:
+		for response in responses:
+			words.append(response['name'])
+
+	return words
+
 def addtodb(sender, data):
 	'''Add json string to db
 	'''
@@ -154,6 +216,20 @@ def addtodb(sender, data):
 	client.close()
 	return True
 
+def removefromdb(sender, data):
+	client = MongoClient('localhost', 27017)
+	if sender == 'master':
+		db = client.masterdb
+	elif sender == 'backup':
+		db = client.backupdb
+	else:
+		db = client[sender+"db"]
+	
+	indices = db.indices
+	indices.remove({'name':{'$in': data}})
+
+	client.close()
+	return True
 
 def commitdb(sender):
 	client = MongoClient('localhost', 27017)

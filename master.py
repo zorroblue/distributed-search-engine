@@ -23,6 +23,7 @@ _ONE_DAY_IN_SECONDS = 60 * 60 * 24
 
 THRESHOLD_COUNT = 1
 THRESHOLD_CATEGORIES = 1
+THRESHOLD_IDLETIME = 3
 
 def build_parser():
 	parser = ArgumentParser()
@@ -50,6 +51,9 @@ class Master(object):
 		# own IP address
 		self.ip = ip
 
+		if db_name not in ['master', 'backup']:
+			self.wordIdletimes = defaultdict(int) #keeps track of the time for which a word has not been queried from a replica
+
 	def SearchForString(self, request, context):
 		search_term = request.query
 		location = request.location
@@ -71,8 +75,6 @@ class Master(object):
 						indices = list(cat_count[location])
 						data, indices_to_put = get_data_for_indices(self.db, indices)
 
-						# TODO : CREATE THE REPLICA HERE IF NOT MADE ALREADY
-						# TODO : FIND REPLICA IP BY QUERYING
 						replica_ip, indices_present = query_metadatadb(self.db, location, indices)
 
 						if replica_ip is None or indices_present == False: # replica needs to be created or updated
@@ -98,7 +100,6 @@ class Master(object):
 								channel = grpc.insecure_channel(replica_ip)
 								stub = search_pb2_grpc.ReplicaCreationStub(channel)
 								request = search_pb2.ReplicaRequest(data = data, master_ip = self.ip, create = False)
-								# TODO: update the entry in the metadata table
 
 							# create or update the replica
 							try :
@@ -139,9 +140,32 @@ class Master(object):
 		return search_pb2.SearchResponse(urls=urls)
 
 	def Check(self, request, context):
-		self.logger.debug("Received heartbeat query from backup")
-		self._HEALTH_CHECK_TIME += 1
-		return search_pb2.HealthCheckResponse(status = "STATUS: Master server up!")
+
+		if(self.db == 'master'):
+			self.logger.debug("Received heartbeat query from backup")
+			self._HEALTH_CHECK_TIME += 1
+			return search_pb2.HealthCheckResponse(status = "STATUS: Master server up!")
+
+		# else it is a replica getting health check message from master
+		self.logger.debug("Received heartbeat query from master")
+
+		allwords = getallwords(self.db)
+		for word in allwords:
+			if word not in wordIdletimes.keys():
+				wordIdletimes[word] = 0
+
+		for word in wordIdletimes.keys():
+			if word not in allwords:
+				wordIdletimes.remove(word)
+
+		indices_to_remove = ""
+		for word in wordIdletimes.keys():
+			wordIdletimes[word] += 1
+			if(wordIdletimes[word] == THRESHOLD_IDLETIME)
+				wordIdletimes.remove(word)
+				indices_to_remove += " " + word
+
+		return search_pb2.HealthCheckResponse(status = "Replica" + self.ip + " up!", data = indices_to_remove)
 
 	def UpdateReplica(self, request, context):
 		self.logger.debug("Received Update Request from master")
@@ -150,7 +174,7 @@ class Master(object):
 
 	def CreateReplica(self, request, context):
 		# replica on receiving set up request
-		data = json_util.loads(request.data)
+		data = json_util.loads(request.data)a
 		master_ip = request.master_ip
 		print "Request for creating replica"
 		print "adding the data"
@@ -177,6 +201,32 @@ def updateReplicaAndBackup(master):
 				master.logger.error("Replica not reachable due to ")
 		time.sleep(10)
 
+def heartbeatThread(db_name, master, replica_ip)
+	channel = grpc.insecure_channel(replica_ip)
+	stub = search_pb2_grpc.HealthCheckStub(channel)
+	request = search_pb2.HealthCheckRequest(healthCheck = "is replica working?")
+	try:
+		master.logger.info("Sending heartbeat to replica")
+		response = stub.Check(request, timeout = 5)
+		print(response.status)
+		removefrom_metadatadb(db_name, replica_ip, response.data.split(' '))
+		master.logger.info("Received " + str(response.status) + " from replica " + replica_ip)
+	except Exception as e:
+		if str(e.code()) == "StatusCode.DEADLINE_EXCEEDED":
+			print("DEADLINE_EXCEEDED!\n")
+			logger.error("Deadline exceed - timeout before response received")
+		if str(e.code()) == "StatusCode.UNAVAILABLE":
+			print("UNAVAILABLE!\n")
+			logger.error("Master server unavailable")
+
+
+def sendHeartbeatsToReplicas(db_name, master):
+	while True:
+		for replica_ip in get_replica_ips_from_metadatadb(db_name):
+			thread.start_new_thread(heartbeatThread, (db_name, master, replica_ip))	
+
+		time.sleep(5) # send heartbeat every 5 seconds
+
 def serve(db_name, ip, logging_level=logging.DEBUG, port='50051'):
 	server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
 	master = Master(db_name, ip, logging_level)
@@ -194,7 +244,14 @@ def serve(db_name, ip, logging_level=logging.DEBUG, port='50051'):
 	except Exception as e:
 		print str(e)
 		master.logger.error("Cannot start new thread due to " + str(e))
-		
+	
+	try:
+		thread.start_new_thread(sendHeartbeatsToReplicas, (db_name, master,))
+	except Exception as e:
+		print str(e)
+		master.logger.error("Cannot start new thread due to " + str(e))
+	
+
 	try:
 		while True:
 			time.sleep(_ONE_DAY_IN_SECONDS)
@@ -212,7 +269,6 @@ def main():
 	level = options.logging_level
 	logging_level = parse_level(level)
 	serve('master', ip, logging_level)
-
 
 if __name__ == '__main__':
 	main()
