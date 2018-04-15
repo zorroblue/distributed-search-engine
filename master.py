@@ -23,7 +23,7 @@ _ONE_DAY_IN_SECONDS = 60 * 60 * 24
 
 THRESHOLD_COUNT = 1
 THRESHOLD_CATEGORIES = 1
-THRESHOLD_IDLETIME = 3
+THRESHOLD_IDLETIME = 120
 
 def build_parser():
 	parser = ArgumentParser()
@@ -186,6 +186,7 @@ class Master(object):
 
 	def UpdateReplica(self, request, context):
 		self.logger.debug("Received Update Request from master " + request.master_ip)
+		print request.data
 		if update_db(self.db, request.data):
 			self.logger.debug(self.db + "db successfully updated")
 			return search_pb2.ReplicaStatus(status = 1)
@@ -206,43 +207,53 @@ class Master(object):
 
 
 def updateReplicaAndBackup(master):
-	if not master.db == 'master':
-		master.logger.info("new master")
-		print "master_backup"
-		return 
 	while True:
-		# Backup
-		data, indices_to_put = get_data_for_backup()
-		print master.master_backup_ip
-		channel = grpc.insecure_channel(master.master_backup_ip)
-		stub = search_pb2_grpc.ReplicaUpdateStub(channel)
-		request = search_pb2.ReplicaRequest(data = data, master_ip = master.ip, create = 0)
-		try:
-			master.logger.info("Sending update message to master backup " + master.master_backup_ip)
-			response = stub.UpdateReplica(request)
-			print(response)
-			master.logger.info("Received " + str(response.status) + " from master backup " + master.master_backup_ip)
-		except Exception as e:
-			print str(e)
-			master.logger.error("Master backup " + master.master_backup_ip + " not reachable due to " + str(e))
-
+		time.sleep(10)
 		# Replica
-		replica_ips = read_replica_filelist()
-		for location, replica_ip in replica_ips.items():
-			data, indices_to_put = get_data_for_replica(replica_ip)
-			print location, replica_ip[0]
-			channel = grpc.insecure_channel(replica_ip[0])
+		replica_ips = get_all_replica_ips(master.db)
+		for replica_ip in replica_ips:
+			data, indices_to_put = get_data_for_replica(master.db, replica_ip)
+			if len(indices_to_put) == 0:
+				continue
+			print replica_ip
+			channel = grpc.insecure_channel(replica_ip)
 			stub = search_pb2_grpc.ReplicaUpdateStub(channel)
 			request = search_pb2.ReplicaRequest(data = data, master_ip = master.ip, create = 0)
 			try:
-				master.logger.info("Sending update message to replica " + replica_ip[0])
+				master.logger.info("Sending update message to replica " + replica_ip)
 				response = stub.UpdateReplica(request)
 				print(response)
-				master.logger.info("Received " + str(response.status) + " from replica " + replica_ip[0])
+				master.logger.info("Received " + str(response.status) + " from replica " + replica_ip)
+				if response.status == 1:
+					master.logger.info("Changing is_new in " + master.db + "db")
+				else :
+					master.logger.error("Replica db update failed")
 			except Exception as e:
 				print str(e)
-				master.logger.error("Replica " + replica_ip[0] + " not reachable due to " + str(e))
-		time.sleep(10)
+				master.logger.error("Replica " + replica_ip + " not reachable due to " + str(e))
+
+		# Backup
+		if master.db == 'master':
+			data, indices_to_put = get_data_for_backup(master.db)
+			# print data, indices_to_put, len(data), len(indices_to_put)
+			if not len(indices_to_put) == 0:
+				channel = grpc.insecure_channel(master.master_backup_ip)
+				stub = search_pb2_grpc.ReplicaUpdateStub(channel)
+				request = search_pb2.ReplicaRequest(data = data, master_ip = master.ip, create = 0)
+				try:
+					master.logger.info("Sending update message to master backup " + master.master_backup_ip)
+					response = stub.UpdateReplica(request)
+					# print(response)
+					master.logger.info("Received " + str(response.status) + " from master backup " + master.master_backup_ip)
+					if response.status == 1:
+						master.logger.info("Changing is_new in " + master.db + "db")
+						updateMasterIndices(master.db, data)
+					else :
+						master.logger.error("Backup db update failed")
+				except Exception as e:
+					print str(e)
+					print "Here!"
+					master.logger.error("Master backup " + master.master_backup_ip + " not reachable due to " + str(e))
 
 def heartbeatThread(db_name, master, replica_ip, location):
 	channel = grpc.insecure_channel(replica_ip)
@@ -266,12 +277,13 @@ def heartbeatThread(db_name, master, replica_ip, location):
 		add_to_metadatadb(db_name, replica_ip, location, words)
 		master.logger.info("Received " + str(response.status) + " from replica " + replica_ip)
 	except Exception as e:
-		if str(e.code()) == "StatusCode.DEADLINE_EXCEEDED":
-			print("DEADLINE_EXCEEDED!\n")
-			master.logger.error("Deadline exceed - timeout before response received")
-		if str(e.code()) == "StatusCode.UNAVAILABLE":
-			print("UNAVAILABLE!\n")
-			master.logger.error("Master server unavailable")
+		master.logger.error("HealthCheck Failed due to " + str(e))
+		# if str(e.code()) == "StatusCode.DEADLINE_EXCEEDED":
+		# 	print("DEADLINE_EXCEEDED!\n")
+		# 	master.logger.error("Deadline exceed - timeout before response received")
+		# if str(e.code()) == "StatusCode.UNAVAILABLE":
+		# 	print("UNAVAILABLE!\n")
+		# 	master.logger.error("Master server unavailable")
 
 
 def sendHeartbeatsToReplicas(db_name, master):
@@ -281,7 +293,7 @@ def sendHeartbeatsToReplicas(db_name, master):
 
 		time.sleep(5) # send heartbeat every 5 seconds
 
-def serve(db_name, ip, logging_level=logging.DEBUG, port='50051'):
+def serve(db_name, ip, master_backup_ip, logging_level=logging.DEBUG, port='50051'):
 	server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
 	master = Master(db_name, ip, master_backup_ip, logging_level)
 	search_pb2_grpc.add_SearchServicer_to_server(master, server)
@@ -300,11 +312,11 @@ def serve(db_name, ip, logging_level=logging.DEBUG, port='50051'):
 		print str(e)
 		master.logger.error("Cannot start new thread due to " + str(e))
 
-	try:
-		thread.start_new_thread(sendHeartbeatsToReplicas, (db_name, master,))
-	except Exception as e:
-		print str(e)
-		master.logger.error("Cannot start new thread due to " + str(e))
+	# try:
+	# 	thread.start_new_thread(sendHeartbeatsToReplicas, (db_name, master,))
+	# except Exception as e:
+	# 	print str(e)
+	# 	master.logger.error("Cannot start new thread due to " + str(e))
 	
 	try:
 		while True:
@@ -320,7 +332,7 @@ def main():
 	options = parser.parse_args()
 	ip = options.ip
 	master_backup_ip = options.master_backup_ip
-	print ip, master_backup_ip
+	# print ip, master_backup_ip
 	level = options.logging_level
 	logging_level = parse_level(level)
 	serve('master', ip, master_backup_ip, logging_level)

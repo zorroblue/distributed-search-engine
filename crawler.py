@@ -65,7 +65,7 @@ class Crawler(object):
 
 	def write_to_master(self):
 		if self.data is None:
-			self.data = generate_indices('pending', 51, 70)
+			self.data = generate_indices('pending', 25, 30)
 
 		logger = self.logger
 		# send to master
@@ -83,9 +83,9 @@ def pushWrite(crawler):
 	while True:
 		query = raw_input("Do you want to push the write(Y/N): ")
 		query = query.strip()
-		if query == 'N' or query == 'No':
+		if query == 'N' or query == 'No' or query == 'n':
 			break
-		elif query == 'Y' or query == 'Yes':
+		elif query == 'Y' or query == 'Yes' or query == 'y':
 			crawler.write_to_master()
 			break
 

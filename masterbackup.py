@@ -65,7 +65,7 @@ def master_serve(server, own_ip, db_name, logging_level):
 		server.stop(0)
 
 
-def sendHeartBeatMessage(master_server_ip, logger, crawler):
+def sendHeartBeatMessage(master_server_ip, server, master, logger, crawler, logging_level):
 	while True:
 		time.sleep(1)
 		channel = grpc.insecure_channel(master_server_ip)
@@ -94,7 +94,7 @@ def sendHeartBeatMessage(master_server_ip, logger, crawler):
 				request = search_pb2.IsMaster()
 				response = stub.MasterChange(request, timeout=10)
 				print "Logger returned ", response.status
-				master_serve(server, own_ip, 'backup', logging_level)
+				master_serve(server, master.ip, 'backup', logging_level)
 				break
 			else:
 				logger.debug("Retrying again #" + str(retries))
@@ -112,7 +112,7 @@ def run(master_server_ip, own_ip, crawler, logging_level, backup_port):
 	server.add_insecure_port('[::]:'+ backup_port)
 	server.start()
 	try:
-		thread.start_new_thread(sendHeartBeatMessage, (master_server_ip, logger, crawler, ))
+		thread.start_new_thread(sendHeartBeatMessage, (master_server_ip, server, master, logger, crawler,logging_level, ))
 	except Exception as e:
 		print str(e)
 		logger.error("Cannot start new thread due to " + str(e))

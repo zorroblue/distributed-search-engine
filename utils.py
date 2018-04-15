@@ -202,8 +202,8 @@ def addtodb(sender, data):
 	
 	requests = []
 	for rec in data:
-		print rec
-		requests.append(UpdateOne({"name" : rec["name"]}, {"$set": {"status" :"committed", "name" : rec["name"], "urls" : rec["urls"], "sim_words" : rec["sim_words"]}} , upsert=True))
+		# print rec
+		requests.append(UpdateOne({"name" : rec["name"]}, {"$set": {"status" :"committed", "name" : rec["name"], "urls" : rec["urls"], "sim_words" : rec["sim_words"], "is_new" : 1}} , upsert=True))
 	
 	try:
 		result = indices.bulk_write(requests, ordered=False)
@@ -316,8 +316,28 @@ def read_replica_filelist():
 		replica_ips[location].append(ip)
 	return replica_ips
 
-def get_data_for_replica(replica_ip):
-	return get_data_for_indices('master', ["freakish"])
+def get_all_replica_ips(sender):
+	client = MongoClient('localhost', 27017)
+	if sender == 'master':
+		db = client.masterdb
+	elif sender == 'backup':
+		db = client.backupdb
+	else:
+		db = client[sender+"db"]
+	
+	entry = db.metadata.find({})
+
+	replica_ips = []
+	
+	if entry is not None:
+		for replica in entry:
+			# print replica
+			replica_ips.append(replica["replica_ip"])
+	client.close()
+	return replica_ips
+
+def get_data_for_replica(sender, replica_ip):
+	# return get_data_for_indices('master', ["freakish"])
 	
 	# location, replica_ip, indices
 	client = MongoClient('localhost', 27017)
@@ -327,18 +347,22 @@ def get_data_for_replica(replica_ip):
 		db = client.backupdb
 	
 	metadata_coll = db.metadata
-	replica = metadata_coll.find({"replica_ip":replica_ip})
+	indices_coll = db.indices
+	replica = metadata_coll.find_one({"replica_ip":replica_ip})
 	
-	indices_coll = replica.indices
-	print indices, len(indices)
-	responses = indices_coll.find({"status" : "changed", "name" :{"$in": indices}})
-	print responses, len(responses)
-	result =  json_util.dumps(responses)
+	indices = replica["indices"]
+
+	# for indice 
+	# print indices, len(indices)
+	responses = indices_coll.find({"is_new" : 1, "name" :{"$in": indices}})
+	result_cur = [response for response in responses]
+	indices = [result["name"] for result in result_cur]
+	result =  json_util.dumps(result_cur)
 	return result, indices
 
 	
-def get_data_for_backup():
-	return get_data_for_indices('master', ["freakish"])
+def get_data_for_backup(sender):
+	# return get_data_for_indices('master', ["freakish"])
 	
 	client = MongoClient('localhost', 27017)
 	if sender == 'master':
@@ -346,10 +370,46 @@ def get_data_for_backup():
 	else:
 		db = client.backupdb
 	indices_coll = db.indices
-	responses = indices_coll.find({"status" : "changed", "name" :{"$in": indices}})
-	print responses, len(responses)
-	result =  json_util.dumps(responses)
+	indices = []
+	
+	responses = indices_coll.find({"is_new" : 1})
+	# print responses, responses.count()
+	result_cur = [response for response in responses]
+	indices = [result["name"] for result in result_cur]
+	result =  json_util.dumps(result_cur)
 	return result, indices
+
+def updateMasterIndices(sender, data):
+	client = MongoClient('localhost', 27017)
+	if sender == 'master':
+		db = client.masterdb
+	elif sender == 'backup':
+		db = client.backupdb
+	else:
+		db = client[sender+"db"]
+
+	if type(data) != type(list(data)):
+		data = json.loads(data.decode('string-escape').strip('"'))
+	indices_coll = db.indices
+
+	requests = []
+	for rec in data:
+		# print rec
+		requests.append(UpdateOne({"name" : rec["name"]}, {"$set": {"status" :"committed", "name" : rec["name"], "urls" : rec["urls"], "sim_words" : rec["sim_words"], "is_new" : 0}} , upsert=True))
+	
+	# print requests[:5]
+	# client.close()
+	# return True
+
+	try:
+		result = indices_coll.bulk_write(requests, ordered=False)
+	except BulkWriteError as exc:
+		print "Error: ", exc.details
+		return False
+	
+	# print "Records: ", indices.count()
+	client.close()
+	return True
 
 def update_db(sender, data):
 	# print len(data), " indices updated"
@@ -364,23 +424,28 @@ def update_db(sender, data):
 
 	if type(data) != type(list()):
 		data = json.loads(data.decode('string-escape').strip('"'))
-	indices = db.indices
+	
+	if len(data) == 0:
+		print "Empty!"
+		return True
 
+	indices_coll = db.indices
 	requests = []
 	for rec in data:
 		print rec
-		requests.append(UpdateOne({"name" : rec["name"]}, {"$set": {"status" :"committed", "name" : rec["name"], "urls" : rec["urls"], "sim_words" : rec["sim_words"]}} , upsert=True))
-	
-	# print requests[:5]
-	# client.close()
-	# return True
+		requests.append(UpdateOne({"name" : rec["name"]}, {"$set": {"status" :"committed", "name" : rec["name"], "urls" : rec["urls"], "sim_words" : rec["sim_words"], "is_new" : 0}} , upsert=True))
 
 	try:
-		result = indices.bulk_write(requests, ordered=False)
+		if not len(requests) == 0:
+			result = indices_coll.bulk_write(requests, ordered=False)
 	except BulkWriteError as exc:
 		print "Error: ", exc.details
 		return False
 	
-	print "Records: ", indices.count()
+	# print "Records: ", indices_coll.count()
 	client.close()
 	return True
+
+# result, indices = get_data_for_backup('master')
+# result, indices = get_data_for_replica('master', 'localhost:50053')
+# print result, indices
