@@ -34,14 +34,51 @@ def add_to_metadatadb(sender, replica_ip, location, indices):
 	# unique index
 
 	metadata_coll.create_index( "location", unique = True)
+
 	try:
-		metadata_coll.insert(json.loads(json.dumps([record])))
+		metadata_coll.update_one({"location" : location}, {"$set": {"location" : location,  "replica_ip" : replica_ip, "indices" : list(indices)}} , upsert=True)
 		print "Success"
 		print "Added ", str(record)," to metadata of ",sender 
 	except Exception as e:
 		print "Failed due to ", str(e)
 
-def query_metadatadb(sender, location, search_term):
+
+def query_metadatadb_indices(sender, replica_ip):
+	client = MongoClient('localhost', 27017)
+	if sender == 'master':
+		db = client.masterdb
+	elif sender == 'backup':
+		db = client.backupdb
+	else:
+		db = client[sender+"db"]
+	
+	entry = db.metadata.find_one({'replica_ip' : replica_ip})
+
+	words = []
+	if entry is not None:
+		for word in entry['indices']:
+			words.append(word)
+	client.close()
+	return words
+
+
+def get_replica_ips_locs_from_metadatadb(sender):
+	client = MongoClient('localhost', 27017)
+	if sender == 'master':
+		db = client.masterdb
+	elif sender == 'backup':
+		db = client.backupdb
+	else:
+		db = client[sender+"db"]
+
+	responses = db.metadata.find({}, {'replica_ip':1, 'location':1, '_id':0})
+	client.close()
+	result = []
+	for response in responses:
+		result.append((response["replica_ip"], response["location"]))
+	return result
+
+def query_metadatadb(sender, location, search_terms):
 	client = MongoClient('localhost', 27017)
 	if sender == 'master':
 		db = client.masterdb
@@ -55,12 +92,13 @@ def query_metadatadb(sender, location, search_term):
 	if replica is None:
 		return None, False
 
-	if search_term in replica["indices"]:
-		print replica["indices"]
-		print search_term+ " found in "+ replica["replica_ip"]
-		return replica["replica_ip"], True
-	else:
-		return replica["replica_ip"], False
+	status = True
+	for search_term in search_terms:
+		if search_term not in list(replica["indices"]):
+			status = False
+			break
+
+	return replica["replica_ip"], status
 
 
 def get_similar(sender, words):
@@ -95,8 +133,11 @@ def get_data_for_indices(sender, indices):
 		db = client[sender+"db"]
 
 	indices_coll = db.indices
+	print indices
 	responses = indices_coll.find({"status" : "committed", "name" :{"$in": indices}})
+	# print "Works till here"
 	result =  json_util.dumps(responses)
+	# print "Here too"
 	return result, indices
 
 
@@ -120,6 +161,28 @@ def querydb(sender, search_term):
 	if response is not None:
 		return response["urls"]
 	return []
+
+def getallwords(sender):
+	'''Query on mongodb database for all name words
+	'''
+	client = MongoClient('localhost', 27017)
+	if sender == 'master':
+		db = client.masterdb
+	elif sender == 'backup':
+		db = client.backupdb
+	else:
+		db = client[sender+"db"]
+
+	indices = db.indices
+	responses = indices.find({}, {'name':1, '_id': 0})
+	client.close()
+
+	words = []
+	if responses is not None:
+		for response in responses:
+			words.append(response['name'])
+
+	return words
 
 def addtodb(sender, data):
 	'''Add json string to db
@@ -151,6 +214,20 @@ def addtodb(sender, data):
 	client.close()
 	return True
 
+def removefromdb(sender, data):
+	client = MongoClient('localhost', 27017)
+	if sender == 'master':
+		db = client.masterdb
+	elif sender == 'backup':
+		db = client.backupdb
+	else:
+		db = client[sender+"db"]
+	
+	indices = db.indices
+	indices.remove({'name':{'$in': data}})
+
+	client.close()
+	return True
 
 def commitdb(sender):
 	client = MongoClient('localhost', 27017)
@@ -239,3 +316,5 @@ def read_replica_filelist():
 		replica_ips[location].append(ip)
 	return replica_ips
 
+def get_data_for_replica(replica_ip):
+	return get_data_for_indices('master', ["freakish"])

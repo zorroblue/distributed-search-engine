@@ -1,4 +1,3 @@
-from __future__ import print_function
 from concurrent import futures
 import time
 import math
@@ -30,6 +29,10 @@ def build_parser():
 			dest='master', help='Master IP address',
 			default='localhost:50051',
 			required=False)
+	parser.add_argument('--crawler',
+			dest='crawler', help='Crawler IP address',
+			default='localhost:50060',
+			required=False)
 	parser.add_argument('--port',
 			dest='port', help='Backup Port',
 			default='50052',
@@ -48,7 +51,10 @@ def build_parser():
 
 
 def master_serve(server, own_ip, db_name, logging_level):
-	master = Master(db_name, own_ip, logging_level)
+
+	# NOTE: backup doesn't have  a backup
+	# TODO: Sync with crawler and master metadata
+	master = Master(db_name, own_ip, None, logging_level)
 	search_pb2_grpc.add_SearchServicer_to_server(master, server)
 	search_pb2_grpc.add_HealthCheckServicer_to_server(master, server)
 	print("Starting master")
@@ -61,7 +67,7 @@ def master_serve(server, own_ip, db_name, logging_level):
 		server.stop(0)
 
 
-def run(master_server_ip, own_ip, logging_level, backup_port):
+def run(master_server_ip, own_ip, crawler, logging_level, backup_port):
 	retries = 0
 	logger = init_logger('backup', logging_level)
 	server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
@@ -71,14 +77,14 @@ def run(master_server_ip, own_ip, logging_level, backup_port):
 	server.add_insecure_port('[::]:'+ backup_port)
 	server.start()
 	while True:
-		time.sleep(10)
+		time.sleep(1)
 		channel = grpc.insecure_channel(master_server_ip)
 		stub = search_pb2_grpc.HealthCheckStub(channel)
 		request = search_pb2.HealthCheckRequest(healthCheck = 'is_working?')
 		try :
-			logger.info("Sending heartbeat message to master")
+			logger.debug("Sending heartbeat message to master")
 			response = stub.Check(request, timeout = 10)
-			print(response)
+			#print(response)
 			# reset retries
 			retries = 0
 		except Exception as e:
@@ -91,6 +97,15 @@ def run(master_server_ip, own_ip, logging_level, backup_port):
 			retries += 1
 			if retries > MAX_RETRIES:
 				logger.debug("Ready to serve as new master...")
+				logger.debug("Sending master message to crawler")
+				channel = grpc.insecure_channel(crawler)
+				stub = search_pb2_grpc.LeaderNoticeStub(channel)
+				try:
+					request = search_pb2.IsMaster()
+					response = stub.MasterChange(request, timeout=10)
+					print "Logger returned ", response.status
+				except Exception as e:
+					print "Couldn't inform crawler due to ",str(e)
 				master_serve(server, own_ip, 'backup', logging_level)
 				break;
 			else:
@@ -104,8 +119,9 @@ def main():
 	ip = options.ip
 	master_server_ip = options.master
 	backup_port = options.port
+	crawler = options.crawler
 	logging_level = parse_level(options.logging_level)
-	run(master_server_ip, ip, logging_level, backup_port)
+	run(master_server_ip, ip, crawler, logging_level, backup_port)
 
 if __name__ == '__main__':
 	main()
