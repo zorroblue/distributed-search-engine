@@ -295,13 +295,16 @@ def heartbeatThread(db_name, master, replica_ip, location):
 			if word in words:
 				words.remove(word)
 
-			master.loc_count[location][word] = 0
-			if word in master.cat_count[location]:
+			if location in master.loc_count and word in master.loc_count[location]:
+				master.loc_count[location][word] = 0
+				
+			if location in master.cat_count and word in master.cat_count[location]:
 				master.cat_count[location].remove(word)
 
 		add_to_metadatadb(db_name, replica_ip, location, words)
 		master.logger.info("Received " + str(response.status) + " from replica " + replica_ip)
 	except Exception as e:
+		print str(e)
 		if str(e.code()) == "StatusCode.DEADLINE_EXCEEDED":
 			print("DEADLINE_EXCEEDED!\n")
 			master.logger.error("Deadline exceed - timeout before response received")

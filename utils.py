@@ -78,7 +78,7 @@ def get_replica_ips_locs_from_metadatadb(sender):
 		result.append((response["replica_ip"], response["location"]))
 	return result
 
-def query_metadatadb(sender, location, search_term):
+def query_metadatadb(sender, location, search_terms):
 	client = MongoClient('localhost', 27017)
 	if sender == 'master':
 		db = client.masterdb
