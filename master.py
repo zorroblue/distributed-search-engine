@@ -21,10 +21,10 @@ from collections import defaultdict
 _ONE_DAY_IN_SECONDS = 60 * 60 * 24
 
 
-THRESHOLD_COUNT = 1
+THRESHOLD_COUNT = 2
 MAX_RETRIES = 3
-THRESHOLD_CATEGORIES = 1
-THRESHOLD_IDLETIME = 100
+THRESHOLD_CATEGORIES = 2
+THRESHOLD_IDLETIME = 10
 
 def build_parser():
 	parser = ArgumentParser()
@@ -38,6 +38,7 @@ def build_parser():
 			dest='ip', help='IP Address',
 			required=True
 		)
+
 	parser.add_argument('--backup',
 			dest='backup', help='Backup IP Address',
 			required=True
@@ -46,6 +47,7 @@ def build_parser():
 
 
 class Master(object):
+
 
 	def __init__(self, db_name, ip, backup, logging_level):
 		self.db = db_name
@@ -56,6 +58,7 @@ class Master(object):
 		self.cat_count = defaultdict(set) # keeps track of categories whose loc_count >= THRESHOLD_COUNT
 		# own IP address
 		self.ip = ip
+		self.master_backup_ip = backup
 
 		if db_name not in ['master', 'backup']:
 			self.wordIdletimes = {} #keeps track of the time for which a word has not been queried from a replica
@@ -238,15 +241,23 @@ class Master(object):
 
 
 		removefromdb(self.db, words_to_remove)
-		print "IDLE WORDS: " + indices_to_remove
+		if len(indices_to_remove)>0:
+			print "IDLE WORDS: " + indices_to_remove
 
-		return search_pb2.HealthCheckResponse(status = "Replica" + self.ip + " up!", data = indices_to_remove)
+		return search_pb2.HealthCheckResponse(status = "Replica " + self.ip + " up!", data = indices_to_remove)
 
 
 	def UpdateReplica(self, request, context):
-		self.logger.debug("Received Update Request from master")
-		print request.master_ip, request.data
-		return search_pb2.ReplicaStatus(status = 1)
+		self.logger.debug("Received Update Request from master " + request.master_ip)
+		print request.data
+		if update_db(self.db, request.data):
+			self.logger.debug(self.db + "db successfully updated")
+			return search_pb2.ReplicaStatus(status = 1)
+		else:
+			self.logger.debug("Error in updating " + self.db + "db")
+			return search_pb2.ReplicaStatus(status = 0)
+
+
 
 
 	def CreateReplica(self, request, context):
@@ -261,22 +272,52 @@ class Master(object):
 
 def updateReplicaAndBackup(master):
 	while True:
-		replica_ips = read_replica_filelist()
-		for location, replica_ip in replica_ips.items():
-			data, indices_to_put = get_data_for_replica(replica_ip)
-			# print location, replica_ip[0]
-			channel = grpc.insecure_channel(replica_ip[0])
+		time.sleep(10)
+		# Replica
+		replica_ips = get_all_replica_ips(master.db)
+		for replica_ip in replica_ips:
+			data, indices_to_put = get_data_for_replica(master.db, replica_ip)
+			if len(indices_to_put) == 0:
+				continue
+			print replica_ip
+			channel = grpc.insecure_channel(replica_ip)
 			stub = search_pb2_grpc.ReplicaUpdateStub(channel)
-			request = search_pb2.ReplicaRequest(data = data, master_ip = master.ip)
+			request = search_pb2.ReplicaRequest(data = data, master_ip = master.ip, create = 0)
 			try:
-				master.logger.info("Sending update message to replica")
+				master.logger.info("Sending update message to replica " + replica_ip)
 				response = stub.UpdateReplica(request)
 				print(response)
-				master.logger.info("Received " + str(response.status) + " from replica " + replica_ip[0])
+				master.logger.info("Received " + str(response.status) + " from replica " + replica_ip)
+				if response.status == 1:
+					master.logger.info("Changing is_new in " + master.db + "db")
+				else :
+					master.logger.error("Replica db update failed")
 			except Exception as e:
-				print e
-				master.logger.error("Replica not reachable due to ")
-		time.sleep(10)
+				print str(e)
+				master.logger.error("Replica " + replica_ip + " not reachable due to " + str(e))
+
+		# Backup
+		if master.db == 'master':
+			data, indices_to_put = get_data_for_backup(master.db)
+			# print data, indices_to_put, len(data), len(indices_to_put)
+			if not len(indices_to_put) == 0:
+				channel = grpc.insecure_channel(master.master_backup_ip)
+				stub = search_pb2_grpc.ReplicaUpdateStub(channel)
+				request = search_pb2.ReplicaRequest(data = data, master_ip = master.ip, create = 0)
+				try:
+					master.logger.info("Sending update message to master backup " + master.master_backup_ip)
+					response = stub.UpdateReplica(request)
+					# print(response)
+					master.logger.info("Received " + str(response.status) + " from master backup " + master.master_backup_ip)
+					if response.status == 1:
+						master.logger.info("Changing is_new in " + master.db + "db")
+						updateMasterIndices(master.db, data)
+					else :
+						master.logger.error("Backup db update failed")
+				except Exception as e:
+					print str(e)
+					print "Here!"
+					master.logger.error("Master backup " + master.master_backup_ip + " not reachable due to " + str(e))
 
 
 def heartbeatThread(db_name, master, replica_ip, location):
@@ -287,7 +328,8 @@ def heartbeatThread(db_name, master, replica_ip, location):
 		master.logger.info("Sending heartbeat to replica")
 		response = stub.Check(request, timeout = 5)
 		print(response.status)
-		print "REMOVING" + response.data
+		if len(response.data)>0:
+			print "REMOVING" + response.data
 		words = query_metadatadb_indices(db_name, location)
 		words_to_remove = response.data.split(' ')
 		for word in words_to_remove:
@@ -300,7 +342,7 @@ def heartbeatThread(db_name, master, replica_ip, location):
 			if location in master.cat_count and word in master.cat_count[location]:
 				master.cat_count[location].remove(word)
 
-		add_to_metadatadb(db_name, replica_ip, location, words)
+		add_to_metadatadb(db_name, replica_ip, location, words,verbose = False)
 		master.logger.info("Received " + str(response.status) + " from replica " + replica_ip)
 	except Exception as e:
 		print str(e)
@@ -362,6 +404,7 @@ def sendHeartbeatsToReplicas(db_name, master):
 
 		time.sleep(5) # send heartbeat every 5 seconds
 
+
 def serve(db_name, ip, backup, logging_level=logging.DEBUG, port='50051'):
 	server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
 	master = Master(db_name, ip, backup, logging_level)
@@ -375,12 +418,11 @@ def serve(db_name, ip, backup, logging_level=logging.DEBUG, port='50051'):
 	master.logger.info("Starting server")
 	print "Starting master"
 	
-	# try:
-	# 	thread.start_new_thread(updateReplicaAndBackup, (master,))
-	# except Exception as e:
-	# 	print str(e)
-	# 	master.logger.error("Cannot start new thread due to " + str(e))
-
+	try:
+		thread.start_new_thread(updateReplicaAndBackup, (master,))
+	except Exception as e:
+		print str(e)
+		master.logger.error("Cannot start new thread due to " + str(e))
 
 	try:
 		thread.start_new_thread(sendHeartbeatsToReplicas, (db_name, master,))
@@ -406,6 +448,7 @@ def main():
 	level = options.logging_level
 	logging_level = parse_level(level)
 	serve('master', ip, backup, logging_level)
+
 
 if __name__ == '__main__':
 	main()

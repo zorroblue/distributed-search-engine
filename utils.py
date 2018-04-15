@@ -16,7 +16,7 @@ from pymongo import InsertOne, DeleteOne, ReplaceOne, UpdateOne
 
 # TODO : add time of creation/update
 # Metadata db
-def add_to_metadatadb(sender, replica_ip, location, indices):
+def add_to_metadatadb(sender, replica_ip, location, indices, verbose=True):
 	record = {}
 	record["replica_ip"] = replica_ip
 	record["location"] = location
@@ -37,8 +37,9 @@ def add_to_metadatadb(sender, replica_ip, location, indices):
 
 	try:
 		metadata_coll.update_one({"location" : location}, {"$set": {"location" : location,  "replica_ip" : replica_ip, "indices" : list(indices)}} , upsert=True)
-		print "Success"
-		print "Added ", str(record)," to metadata of ",sender 
+		if(verbose):
+			print "Success"
+			print "Added ", str(record)," to metadata of ",sender 
 	except Exception as e:
 		print "Failed due to ", str(e)
 
@@ -147,7 +148,7 @@ def get_data_for_indices(sender, indices):
 		db = client[sender+"db"]
 
 	indices_coll = db.indices
-	print indices
+	# print indices, len(indices)
 	responses = indices_coll.find({"status" : "committed", "name" :{"$in": indices}})
 	# print "Works till here"
 	result =  json_util.dumps(responses)
@@ -216,8 +217,8 @@ def addtodb(sender, data):
 	
 	requests = []
 	for rec in data:
-		print rec
-		requests.append(UpdateOne({"name" : rec["name"]}, {"$set": {"status" :"committed", "name" : rec["name"], "urls" : rec["urls"], "sim_words" : rec["sim_words"]}} , upsert=True))
+		# print rec
+		requests.append(UpdateOne({"name" : rec["name"]}, {"$set": {"status" :"committed", "name" : rec["name"], "urls" : rec["urls"], "sim_words" : rec["sim_words"], "is_new" : 1}} , upsert=True))
 	
 	try:
 		result = indices.bulk_write(requests, ordered=False)
@@ -330,5 +331,136 @@ def read_replica_filelist():
 		replica_ips[location].append(ip)
 	return replica_ips
 
-def get_data_for_replica(replica_ip):
-	return get_data_for_indices('master', ["freakish"])
+def get_all_replica_ips(sender):
+	client = MongoClient('localhost', 27017)
+	if sender == 'master':
+		db = client.masterdb
+	elif sender == 'backup':
+		db = client.backupdb
+	else:
+		db = client[sender+"db"]
+	
+	entry = db.metadata.find({})
+
+	replica_ips = []
+	
+	if entry is not None:
+		for replica in entry:
+			# print replica
+			replica_ips.append(replica["replica_ip"])
+	client.close()
+	return replica_ips
+
+def get_data_for_replica(sender, replica_ip):
+	# return get_data_for_indices('master', ["freakish"])
+	
+	# location, replica_ip, indices
+	client = MongoClient('localhost', 27017)
+	if sender == 'master':
+		db = client.masterdb
+	else:
+		db = client.backupdb
+	
+	metadata_coll = db.metadata
+	indices_coll = db.indices
+	replica = metadata_coll.find_one({"replica_ip":replica_ip})
+	
+	indices = replica["indices"]
+
+	# for indice 
+	# print indices, len(indices)
+	responses = indices_coll.find({"is_new" : 1, "name" :{"$in": indices}})
+	result_cur = [response for response in responses]
+	indices = [result["name"] for result in result_cur]
+	result =  json_util.dumps(result_cur)
+	return result, indices
+
+	
+def get_data_for_backup(sender):
+	# return get_data_for_indices('master', ["freakish"])
+	
+	client = MongoClient('localhost', 27017)
+	if sender == 'master':
+		db = client.masterdb
+	else:
+		db = client.backupdb
+	indices_coll = db.indices
+	indices = []
+	
+	responses = indices_coll.find({"is_new" : 1})
+	# print responses, responses.count()
+	result_cur = [response for response in responses]
+	indices = [result["name"] for result in result_cur]
+	result =  json_util.dumps(result_cur)
+	return result, indices
+
+def updateMasterIndices(sender, data):
+	client = MongoClient('localhost', 27017)
+	if sender == 'master':
+		db = client.masterdb
+	elif sender == 'backup':
+		db = client.backupdb
+	else:
+		db = client[sender+"db"]
+
+	if type(data) != type(list(data)):
+		data = json.loads(data.decode('string-escape').strip('"'))
+	indices_coll = db.indices
+
+	requests = []
+	for rec in data:
+		# print rec
+		requests.append(UpdateOne({"name" : rec["name"]}, {"$set": {"status" :"committed", "name" : rec["name"], "urls" : rec["urls"], "sim_words" : rec["sim_words"], "is_new" : 0}} , upsert=True))
+	
+	# print requests[:5]
+	# client.close()
+	# return True
+
+	try:
+		result = indices_coll.bulk_write(requests, ordered=False)
+	except BulkWriteError as exc:
+		print "Error: ", exc.details
+		return False
+	
+	# print "Records: ", indices.count()
+	client.close()
+	return True
+
+def update_db(sender, data):
+	# print len(data), " indices updated"
+	# return True
+	client = MongoClient('localhost', 27017)
+	if sender == 'master':
+		db = client.masterdb
+	elif sender == 'backup':
+		db = client.backupdb
+	else:
+		db = client[sender+"db"]
+
+	if type(data) != type(list()):
+		data = json.loads(data.decode('string-escape').strip('"'))
+	
+	if len(data) == 0:
+		print "Empty!"
+		return True
+
+	indices_coll = db.indices
+	requests = []
+	for rec in data:
+		print rec
+		requests.append(UpdateOne({"name" : rec["name"]}, {"$set": {"status" :"committed", "name" : rec["name"], "urls" : rec["urls"], "sim_words" : rec["sim_words"], "is_new" : 0}} , upsert=True))
+
+	try:
+		if not len(requests) == 0:
+			result = indices_coll.bulk_write(requests, ordered=False)
+	except BulkWriteError as exc:
+		print "Error: ", exc.details
+		return False
+	
+	# print "Records: ", indices_coll.count()
+	client.close()
+	return True
+
+# result, indices = get_data_for_backup('master')
+# result, indices = get_data_for_replica('master', 'localhost:50053')
+# print result, indices

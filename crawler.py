@@ -29,12 +29,12 @@ def build_parser():
 	parser.add_argument('--master',
 			dest='master', help='Master IP address',
 			default='localhost:50051',
-			required=False)
+			required=True)
 	parser.add_argument('--backup',
 			dest='backup',
 			default='localhost:50052',
 			help='backup IP address',
-			required=False)
+			required=True)
 	parser.add_argument('--port',
 			dest='port',
 			default='50060',
@@ -65,7 +65,7 @@ class Crawler(object):
 
 	def write_to_master(self):
 		if self.data is None:
-			self.data = generate_indices('pending', 71, 75)
+			self.data = generate_indices('pending', 25, 30)
 
 		logger = self.logger
 		# send to master
@@ -84,9 +84,9 @@ def pushWrite(crawler):
 	while True:
 		query = raw_input("Do you want to push the write(Y/N): ")
 		query = query.strip()
-		if query == 'N' or query == 'No':
+		if query == 'N' or query == 'No' or query == 'n':
 			break
-		elif query == 'Y' or query == 'Yes':
+		elif query == 'Y' or query == 'Yes' or query == 'y':
 			try:
 				crawler.write_to_master()
 			except Exception as e:

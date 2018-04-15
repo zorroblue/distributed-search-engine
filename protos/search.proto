@@ -78,7 +78,7 @@ service LeaderNotice {
 // for the dynamic replication
 message ReplicaRequest {
 	required string data = 1;
-	required string master_ip = 2;
+	optional string master_ip = 2;
 	optional bool create = 3;
 }
 
@@ -90,14 +90,6 @@ service ReplicaCreation {
 	rpc CreateReplica(ReplicaRequest) returns (ReplicaStatus);
 }
 
-// to update indices , replicaDB and masterBackupDB
-message DataUpdateRequest {
-	required string data = 1;
-	required string master_ip = 2;
-}
-
 service ReplicaUpdate {
 	rpc UpdateReplica(ReplicaRequest) returns (ReplicaStatus);
 }
-
-
