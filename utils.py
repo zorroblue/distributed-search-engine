@@ -279,3 +279,37 @@ def get_data_for_backup():
 	print responses, len(responses)
 	result =  json_util.dumps(responses)
 	return result, indices
+
+def update_db(sender, data):
+	# print len(data), " indices updated"
+	# return True
+	client = MongoClient('localhost', 27017)
+	if sender == 'master':
+		db = client.masterdb
+	elif sender == 'backup':
+		db = client.backupdb
+	else:
+		db = client[sender+"db"]
+
+	if type(data) != type(list()):
+		data = json.loads(data.decode('string-escape').strip('"'))
+	indices = db.indices
+
+	requests = []
+	for rec in data:
+		print rec
+		requests.append(UpdateOne({"name" : rec["name"]}, {"$set": {"status" :"committed", "name" : rec["name"], "urls" : rec["urls"], "sim_words" : rec["sim_words"]}} , upsert=True))
+	
+	# print requests[:5]
+	# client.close()
+	# return True
+
+	try:
+		result = indices.bulk_write(requests, ordered=False)
+	except BulkWriteError as exc:
+		print "Error: ", exc.details
+		return False
+	
+	print "Records: ", indices.count()
+	client.close()
+	return True

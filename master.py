@@ -151,9 +151,12 @@ class Master(object):
 
 	def UpdateReplica(self, request, context):
 		self.logger.debug("Received Update Request from master " + request.master_ip)
-		# print request.master_ip, request.data
-		print self.db
-		return search_pb2.ReplicaStatus(status = 1)
+		if update_db(self.db, request.data):
+			self.logger.debug(self.db + "db successfully updated")
+			return search_pb2.ReplicaStatus(status = 1)
+		else:
+			self.logger.debug("Error in updating " + self.db + "db")
+			return search_pb2.ReplicaStatus(status = 0)
 
 
 
