@@ -22,6 +22,7 @@ _ONE_DAY_IN_SECONDS = 60 * 60 * 24
 
 
 THRESHOLD_COUNT = 1
+MAX_RETRIES = 3
 THRESHOLD_CATEGORIES = 1
 
 def build_parser():
@@ -36,13 +37,18 @@ def build_parser():
 			dest='ip', help='IP Address',
 			required=True
 		)
+	parser.add_argument('--backup',
+			dest='backup', help='Backup IP Address',
+			required=True
+		)
 	return parser
 
 
 class Master(object):
 
-	def __init__(self, db_name, ip, logging_level=logging.DEBUG):
+	def __init__(self, db_name, ip, backup, logging_level):
 		self.db = db_name
+		self.backup = backup
 		self._HEALTH_CHECK_TIME = 0
 		self.logger = init_logger(db_name, logging_level)
 		self.loc_count = {} # keeps track of search queries and categories in location
@@ -71,9 +77,8 @@ class Master(object):
 						indices = list(cat_count[location])
 						data, indices_to_put = get_data_for_indices(self.db, indices)
 
-						# TODO : CREATE THE REPLICA HERE IF NOT MADE ALREADY
-						# TODO : FIND REPLICA IP BY QUERYING
 						replica_ip, indices_present = query_metadatadb(self.db, location, indices)
+						print "Queried metadata", indices_present, replica_ip
 
 						if replica_ip is None or indices_present == False: # replica needs to be created or updated
 
@@ -89,8 +94,8 @@ class Master(object):
 									channel = grpc.insecure_channel(replica_ip)
 									stub = search_pb2_grpc.ReplicaCreationStub(channel)
 									request = search_pb2.ReplicaRequest(data = data, master_ip = self.ip, create = True)
-									# TODO: add this entry to the metadata table
-									add_to_metadatadb(self.db, replica_ip, location, indices_to_put)
+									
+									break
 
 							elif replica_ip is not None and indices_present == False: # replica present but indices not present
 								self.logger.info("Adding indices to the replica in "+location+ " at "+ replica_ip)
@@ -98,14 +103,20 @@ class Master(object):
 								channel = grpc.insecure_channel(replica_ip)
 								stub = search_pb2_grpc.ReplicaCreationStub(channel)
 								request = search_pb2.ReplicaRequest(data = data, master_ip = self.ip, create = False)
-								# TODO: update the entry in the metadata table
-								add_to_metadatadb(self.db, replica_ip, location, indices_to_put)
-
+								
 							# create or update the replica
 							try :
 								print "Querying the replica"
 								response = stub.CreateReplica(request, timeout = 10)
 								print(response)
+								# Add this entry to the metadata table
+								# initiate 2 phase commit for the same
+								if self.db == 'master':
+									# 2 Phase commit for sequential consistency with backup
+									self.initiate_2_phase_commit(replica_ip, location, indices_to_put)
+								else: # backup
+									# don't do anything since master has crashed
+									add_to_metadatadb(self.db, replica_ip, location, indices_to_put)
 							except Exception as e:
 								print str(e)
 								if str(e.code()) == "StatusCode.DEADLINE_EXCEEDED":
@@ -139,15 +150,69 @@ class Master(object):
 		print urls
 		return search_pb2.SearchResponse(urls=urls)
 
+
+	def initiate_2_phase_commit(self, replica_ip, location, indices_to_put):
+		print "Starting two phase commit"
+		logger = self.logger
+		logger.info("Starting 2 phase commit")
+		print "Phase 1: Prepare"
+		backup = self.backup
+		print "Backup is", backup
+		backup_channel = grpc.insecure_channel(backup)
+		backup_stub = search_pb2_grpc.DatabaseWriteStub(backup_channel)
+		backup_vote = None
+		try:
+			logger.info("Send COMMIT_REQUEST to backup")
+			request = search_pb2.CommitRequest(replica_ip=replica_ip, location=location, indices=indices_to_put)
+			backup_vote = backup_stub.QueryToCommit(request)
+			print "Backup Status: ", backup_vote.status
+			if backup_vote.status == 1:
+				logger.info("Received AGREED from backup")
+			else:
+				logger.info("Received ABORT from backup")
+		except Exception as e:
+			print str(e)
+			print e.code()
+			logger.error("Backup not reachable due to "+ str(e.code()))
+	
+		logger.info("Added "+replica_ip+", "+location+", "+str(indices_to_put))
+		add_to_metadatadb(self.db, replica_ip, location, indices_to_put)
+		
+		backup_ack = None
+		if backup_vote is not None:
+			if backup_vote.status == 1:
+				logger.info("Transaction COMMIT")
+				logger.info("Sending COMMIT to backup")
+				request = search_pb2.CommitStatusUpdate(code=search_pb2.COMMIT)
+				retries = 0
+				while retries < MAX_RETRIES:
+					try:
+						backup_ack = backup_stub.CommitPhase(request)
+						retries = MAX_RETRIES
+						if backup_ack.status == 1:
+							logger.info("Backup ACK received")
+							logger.info("transaction complete")
+					except Exception as e:
+						if str(e.code()) == "StatusCode.DEADLINE_EXCEEDED":
+							print("DEADLINE_EXCEEDED!\n")
+							logger.error("Deadline exceed - timeout before response received")
+						if str(e.code()) == "StatusCode.UNAVAILABLE":
+							print("UNAVAILABLE!\n")
+							logger.error("Backup server unavailable")
+
+
+
 	def Check(self, request, context):
 		self.logger.debug("Received heartbeat query from backup")
 		self._HEALTH_CHECK_TIME += 1
 		return search_pb2.HealthCheckResponse(status = "STATUS: Master server up!")
 
+
 	def UpdateReplica(self, request, context):
 		self.logger.debug("Received Update Request from master")
 		print request.master_ip, request.data
 		return search_pb2.ReplicaStatus(status = 1)
+
 
 	def CreateReplica(self, request, context):
 		# replica on receiving set up request
@@ -178,9 +243,9 @@ def updateReplicaAndBackup(master):
 				master.logger.error("Replica not reachable due to ")
 		time.sleep(10)
 
-def serve(db_name, ip, logging_level=logging.DEBUG, port='50051'):
+def serve(db_name, ip, backup, logging_level=logging.DEBUG, port='50051'):
 	server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
-	master = Master(db_name, ip, logging_level)
+	master = Master(db_name, ip, backup, logging_level)
 	search_pb2_grpc.add_SearchServicer_to_server(master, server)
 	search_pb2_grpc.add_HealthCheckServicer_to_server(master, server)
 	write_service = WriteService(db_name, logger=master.logger)
@@ -190,13 +255,13 @@ def serve(db_name, ip, logging_level=logging.DEBUG, port='50051'):
 	server.start()
 	master.logger.info("Starting server")
 	print "Starting master"
-	'''
+
 	try:
 		thread.start_new_thread(updateReplicaAndBackup, (master,))
 	except Exception as e:
 		print str(e)
 		master.logger.error("Cannot start new thread due to " + str(e))
-	'''	
+
 	try:
 		while True:
 			time.sleep(_ONE_DAY_IN_SECONDS)
@@ -210,10 +275,11 @@ def main():
 	parser = build_parser()
 	options = parser.parse_args()
 	ip = options.ip
-	print ip
+	backup = options.backup
+	print ip, backup
 	level = options.logging_level
 	logging_level = parse_level(level)
-	serve('master', ip, logging_level)
+	serve('master', ip, backup, logging_level)
 
 
 if __name__ == '__main__':

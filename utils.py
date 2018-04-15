@@ -34,17 +34,15 @@ def add_to_metadatadb(sender, replica_ip, location, indices):
 	# unique index
 
 	metadata_coll.create_index( "location", unique = True)
-	#rec = json.loads(json.dumps([record]))
 
 	try:
-		#metadata_coll.insert()
-		metadata_coll.update_one({"location" : location}, {"$set": {"location" : location,  "replica_ip" : replica_ip, "indices" : indices}} , upsert=True)
+		metadata_coll.update_one({"location" : location}, {"$set": {"location" : location,  "replica_ip" : replica_ip, "indices" : list(indices)}} , upsert=True)
 		print "Success"
 		print "Added ", str(record)," to metadata of ",sender 
 	except Exception as e:
 		print "Failed due to ", str(e)
 
-def query_metadatadb(sender, location, search_term):
+def query_metadatadb(sender, location, search_terms):
 	client = MongoClient('localhost', 27017)
 	if sender == 'master':
 		db = client.masterdb
@@ -58,12 +56,13 @@ def query_metadatadb(sender, location, search_term):
 	if replica is None:
 		return None, False
 
-	if search_term in replica["indices"]:
-		print replica["indices"]
-		print search_term+ " found in "+ replica["replica_ip"]
-		return replica["replica_ip"], True
-	else:
-		return replica["replica_ip"], False
+	status = True
+	for search_term in search_terms:
+		if search_term not in list(replica["indices"]):
+			status = False
+			break
+
+	return replica["replica_ip"], status
 
 
 def get_similar(sender, words):

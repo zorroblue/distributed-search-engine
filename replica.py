@@ -57,7 +57,9 @@ def run(name, ip, port, logging_level):
 	search_pb2_grpc.add_DatabaseWriteServicer_to_server(write_service, server)
 	write_service = WriteService(name, logger=logger)
 	search_pb2_grpc.add_DatabaseWriteServicer_to_server(write_service, server)
-	master = Master(name, ip, logging_level)
+	
+	# the dynamic replica need to query the backup hence doesn't need to know who the backup is
+	master = Master(name, ip, None, logging_level)
 	search_pb2_grpc.add_SearchServicer_to_server(master, server)
 	search_pb2_grpc.add_HealthCheckServicer_to_server(master, server)
 	search_pb2_grpc.add_ReplicaUpdateServicer_to_server(master, server)

@@ -15,7 +15,13 @@ message SearchResponse {
 }
 
 message CommitRequest {
+	// for the crawler updates
 	optional string data = 4;
+	
+	// for the 2 phase commit 
+	optional string replica_ip =5;
+	optional string location = 6;
+	repeated string indices = 7;
 }
 
 message CommitVote {
