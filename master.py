@@ -321,12 +321,18 @@ def heartbeatThread(db_name, master, replica_ip, location):
 
 		if flag==1:
 			print "Setting up alternate replica at location ", location, "at IP ", new_replica_ip
-			update_replica_ip(db_name, location, new_replica_ip)
-			words = query_metadatadb_indices(db_name, location)
-			data, indices_to_put = get_data_for_indices(db_name, words)
-
 			master.logger.info("Setting up alternate replica in "+location+ " at "+ new_replica_ip)
 
+			words = query_metadatadb_indices(db_name, location)
+			
+			if master.db == 'master':
+				# 2 Phase commit for sequential consistency with backup
+				self.initiate_2_phase_commit(new_replica_ip, location, words)
+			else: # backup
+				# don't do anything since master has crashed
+				add_to_metadatadb(master.db, new_replica_ip, location, words)
+
+			data, indices_to_put = get_data_for_indices(db_name, words)
 
 			channel = grpc.insecure_channel(new_replica_ip)
 			stub = search_pb2_grpc.ReplicaCreationStub(channel)
