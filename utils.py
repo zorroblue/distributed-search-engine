@@ -220,6 +220,9 @@ def addtodb(sender, data):
 		# print rec
 		requests.append(UpdateOne({"name" : rec["name"]}, {"$set": {"status" :"committed", "name" : rec["name"], "urls" : rec["urls"], "sim_words" : rec["sim_words"], "is_new" : 1}} , upsert=True))
 	
+	if len(requests) == 0:
+		return True
+
 	try:
 		result = indices.bulk_write(requests, ordered=False)
 	except BulkWriteError as exc:

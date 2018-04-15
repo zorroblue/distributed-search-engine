@@ -369,7 +369,7 @@ def heartbeatThread(db_name, master, replica_ip, location):
 			
 			if master.db == 'master':
 				# 2 Phase commit for sequential consistency with backup
-				self.initiate_2_phase_commit(new_replica_ip, location, words)
+				master.initiate_2_phase_commit(new_replica_ip, location, words)
 			else: # backup
 				# don't do anything since master has crashed
 				add_to_metadatadb(master.db, new_replica_ip, location, words)
