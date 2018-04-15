@@ -21,10 +21,10 @@ from collections import defaultdict
 _ONE_DAY_IN_SECONDS = 60 * 60 * 24
 
 
-THRESHOLD_COUNT = 1
+THRESHOLD_COUNT = 2
 MAX_RETRIES = 3
-THRESHOLD_CATEGORIES = 1
-THRESHOLD_IDLETIME = 100
+THRESHOLD_CATEGORIES = 2
+THRESHOLD_IDLETIME = 10
 
 def build_parser():
 	parser = ArgumentParser()
@@ -241,9 +241,10 @@ class Master(object):
 
 
 		removefromdb(self.db, words_to_remove)
-		print "IDLE WORDS: " + indices_to_remove
+		if len(indices_to_remove)>0:
+			print "IDLE WORDS: " + indices_to_remove
 
-		return search_pb2.HealthCheckResponse(status = "Replica" + self.ip + " up!", data = indices_to_remove)
+		return search_pb2.HealthCheckResponse(status = "Replica " + self.ip + " up!", data = indices_to_remove)
 
 
 	def UpdateReplica(self, request, context):
@@ -327,7 +328,8 @@ def heartbeatThread(db_name, master, replica_ip, location):
 		master.logger.info("Sending heartbeat to replica")
 		response = stub.Check(request, timeout = 5)
 		print(response.status)
-		print "REMOVING" + response.data
+		if len(response.data)>0:
+			print "REMOVING" + response.data
 		words = query_metadatadb_indices(db_name, location)
 		words_to_remove = response.data.split(' ')
 		for word in words_to_remove:

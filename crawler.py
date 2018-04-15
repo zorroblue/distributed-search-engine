@@ -29,12 +29,12 @@ def build_parser():
 	parser.add_argument('--master',
 			dest='master', help='Master IP address',
 			default='localhost:50051',
-			required=False)
+			required=True)
 	parser.add_argument('--backup',
 			dest='backup',
 			default='localhost:50052',
 			help='backup IP address',
-			required=False)
+			required=True)
 	parser.add_argument('--port',
 			dest='port',
 			default='50060',

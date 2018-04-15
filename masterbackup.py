@@ -83,7 +83,7 @@ def master_serve(server, own_ip, db_name, logging_level):
 
 def sendHeartBeatMessage(master_server_ip, server, master, logger, crawler, logging_level):
 	while True:
-		time.sleep(1)
+		time.sleep(5)
 		channel = grpc.insecure_channel(master_server_ip)
 		stub = search_pb2_grpc.HealthCheckStub(channel)
 		request = search_pb2.HealthCheckRequest(healthCheck = 'is_working?')
