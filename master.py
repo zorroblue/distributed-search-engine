@@ -58,7 +58,7 @@ class Master(object):
 		self.cat_count = defaultdict(set) # keeps track of categories whose loc_count >= THRESHOLD_COUNT
 		# own IP address
 		self.ip = ip
-		self.master_backup_ip = master_backup_ip
+		self.master_backup_ip = backup
 
 		if db_name not in ['master', 'backup']:
 			self.wordIdletimes = {} #keeps track of the time for which a word has not been queried from a replica

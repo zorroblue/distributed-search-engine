@@ -13,12 +13,12 @@ def build_parser():
 	parser.add_argument('--master',
 			dest='master', help='Master IP address',
 			default='localhost:50051',
-			required=False)
-	parser.add_argument('--replica',
-			dest='replica',
-			default='localhost:50051',
-			help='Replica IP address',
-			required=False)
+			required=True)
+	parser.add_argument('--backup',
+			dest='backup',
+			default='localhost:50063',
+			help='Backup IP address',
+			required=True)
 	return parser
 
 

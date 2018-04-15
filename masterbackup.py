@@ -100,7 +100,7 @@ def sendHeartBeatMessage(master_server_ip, server, master, logger, crawler, logg
 					print "Logger returned ", response.status
 				except Exception as e:
 					print "Couldn't inform crawler due to ",str(e)
-				master_serve(server, own_ip, 'backup', logging_level)
+				master_serve(server, master.ip, 'backup', logging_level)
 				break
 			else:
 				logger.debug("Retrying again #" + str(retries))
@@ -113,7 +113,7 @@ def run(master_server_ip, own_ip, crawler, logging_level, backup_port):
 	# add write service to backup server to handle database updates from crawler 
 	write_service = WriteService('backup', logger=logger)
 	search_pb2_grpc.add_DatabaseWriteServicer_to_server(write_service, server)
-	master = Master("backup", own_ip, logging_level)
+	master = Master("backup", own_ip, None, logging_level)
 	search_pb2_grpc.add_ReplicaUpdateServicer_to_server(master, server)
 	server.add_insecure_port('[::]:'+ backup_port)
 	server.start()
