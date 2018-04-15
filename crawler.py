@@ -69,6 +69,7 @@ class Crawler(object):
 
 		logger = self.logger
 		# send to master
+		print "Master is ", self.master
 		master_channel = grpc.insecure_channel(self.master)
 		master_stub = search_pb2_grpc.DatabaseWriteStub(master_channel)
 		logger.info("Sending data to master")
@@ -86,8 +87,11 @@ def pushWrite(crawler):
 		if query == 'N' or query == 'No' or query == 'n':
 			break
 		elif query == 'Y' or query == 'Yes' or query == 'y':
-			crawler.write_to_master()
-			break
+			try:
+				crawler.write_to_master()
+			except Exception as e:
+				print str(e)
+
 
 def run(master, backup, logging_level, port, data=None):
 	server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))

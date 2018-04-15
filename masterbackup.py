@@ -52,7 +52,10 @@ def build_parser():
 
 
 def master_serve(server, own_ip, db_name, logging_level):
-	master = Master(db_name, own_ip, logging_level)
+
+	# NOTE: backup doesn't have  a backup
+	# TODO: Sync with crawler and master metadata
+	master = Master(db_name, own_ip, None, logging_level)
 	search_pb2_grpc.add_SearchServicer_to_server(master, server)
 	search_pb2_grpc.add_HealthCheckServicer_to_server(master, server)
 	print("Starting master")
@@ -72,9 +75,9 @@ def sendHeartBeatMessage(master_server_ip, server, master, logger, crawler, logg
 		stub = search_pb2_grpc.HealthCheckStub(channel)
 		request = search_pb2.HealthCheckRequest(healthCheck = 'is_working?')
 		try :
-			logger.info("Sending heartbeat message to master")
+			logger.debug("Sending heartbeat message to master")
 			response = stub.Check(request, timeout = 10)
-			print(response)
+			#print(response)
 			# reset retries
 			retries = 0
 		except Exception as e:
@@ -91,10 +94,13 @@ def sendHeartBeatMessage(master_server_ip, server, master, logger, crawler, logg
 				logger.debug("Sending master message to crawler")
 				channel = grpc.insecure_channel(crawler)
 				stub = search_pb2_grpc.LeaderNoticeStub(channel)
-				request = search_pb2.IsMaster()
-				response = stub.MasterChange(request, timeout=10)
-				print "Logger returned ", response.status
-				master_serve(server, master.ip, 'backup', logging_level)
+				try:
+					request = search_pb2.IsMaster()
+					response = stub.MasterChange(request, timeout=10)
+					print "Logger returned ", response.status
+				except Exception as e:
+					print "Couldn't inform crawler due to ",str(e)
+				master_serve(server, own_ip, 'backup', logging_level)
 				break
 			else:
 				logger.debug("Retrying again #" + str(retries))
