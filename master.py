@@ -24,7 +24,7 @@ _ONE_DAY_IN_SECONDS = 60 * 60 * 24
 THRESHOLD_COUNT = 1
 MAX_RETRIES = 3
 THRESHOLD_CATEGORIES = 1
-THRESHOLD_IDLETIME = 3
+THRESHOLD_IDLETIME = 100
 
 def build_parser():
 	parser = ArgumentParser()
@@ -130,7 +130,7 @@ class Master(object):
 									self.logger.error("Master server unavailable")
 
 						else: # replica present with indices
-							self.logger.debug("Received query: " + search_term, "redirecting to replica " + replica_ip + " at " + location)
+							self.logger.debug("Received query: " + search_term+ "redirecting to replica " + replica_ip + " at " + location)
 
 						#now query replica's db for urls
 						channel = grpc.insecure_channel(replica_ip)
@@ -217,8 +217,7 @@ class Master(object):
 		self.logger.debug("Received heartbeat query from master")
 
 		allwords = getallwords(self.db)
-		print "ALL WORDS IN DB:" + str(allwords)
-		print "wordIdletimes: " + str(self.wordIdletimes)
+		#print "wordIdletimes: " + str(self.wordIdletimes)
 		for word in allwords:
 			if word not in self.wordIdletimes.keys():
 				self.wordIdletimes[word] = 0
@@ -289,7 +288,7 @@ def heartbeatThread(db_name, master, replica_ip, location):
 		response = stub.Check(request, timeout = 5)
 		print(response.status)
 		print "REMOVING" + response.data
-		words = query_metadatadb_indices(db_name, replica_ip)
+		words = query_metadatadb_indices(db_name, location)
 		words_to_remove = response.data.split(' ')
 		for word in words_to_remove:
 			if word in words:
@@ -312,6 +311,43 @@ def heartbeatThread(db_name, master, replica_ip, location):
 			print("UNAVAILABLE!\n")
 			master.logger.error("Master server unavailable")
 
+		
+		replica_ips = read_replica_filelist()[location]
+		flag = 0
+		for ip in replica_ips:
+			if ip != replica_ip:
+				flag = 1
+				new_replica_ip = ip
+
+		if flag==1:
+			print "Setting up alternate replica at location ", location, "at IP ", new_replica_ip
+			update_replica_ip(db_name, location, new_replica_ip)
+			words = query_metadatadb_indices(db_name, location)
+			data, indices_to_put = get_data_for_indices(db_name, words)
+
+			master.logger.info("Setting up alternate replica in "+location+ " at "+ new_replica_ip)
+
+
+			channel = grpc.insecure_channel(new_replica_ip)
+			stub = search_pb2_grpc.ReplicaCreationStub(channel)
+			request = search_pb2.ReplicaRequest(data = data, master_ip = master.ip, create = True)
+
+			try :
+				print "Sending data to alternate replica ", new_replica_ip
+				response = stub.CreateReplica(request, timeout = 10)
+				print(response)
+
+			except Exception as e:
+				print str(e)
+				if str(e.code()) == "StatusCode.DEADLINE_EXCEEDED":
+					print("DEADLINE_EXCEEDED!\n")
+					master.logger.error("Deadline exceed - timeout before response received")
+				if str(e.code()) == "StatusCode.UNAVAILABLE":
+					print("UNAVAILABLE!\n")
+					master.logger.error("Master server unavailable")
+		else:
+			print "No alternative replica IP found"
+		
 
 def sendHeartbeatsToReplicas(db_name, master):
 	while True:
