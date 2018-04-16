@@ -32,7 +32,7 @@ def build_parser():
 			required=True)
 	parser.add_argument('--backup',
 			dest='backup',
-			default='localhost:50052',
+			default='localhost:50063',
 			help='backup IP address',
 			required=True)
 	parser.add_argument('--port',
@@ -63,10 +63,11 @@ class Crawler(object):
 		self.logger.info("Changed master ip to "+ self.master)
 		return search_pb2.Acknowledgement(status=1)
 
-	def write_to_master(self):
+	def write_to_master(self, word):
 		if self.data is None:
-			self.data = generate_indices('pending', 25, 30)
+			self.data = generate_indices('pending', word, 25, 30)
 
+		print self.data
 		logger = self.logger
 		# send to master
 		print "Master is ", self.master
@@ -88,10 +89,12 @@ def pushWrite(crawler):
 			break
 		elif query == 'Y' or query == 'Yes' or query == 'y':
 			try:
-				crawler.write_to_master()
+				word = raw_input("Enter word: ")
+				word = word.strip()
+				crawler.write_to_master(word)
 			except Exception as e:
 				print str(e)
-
+			break
 
 def run(master, backup, logging_level, port, data=None):
 	server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
