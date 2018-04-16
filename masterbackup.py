@@ -36,7 +36,7 @@ def build_parser():
 			required=False)
 	parser.add_argument('--port',
 			dest='port', help='Backup Port',
-			default='50052',
+			default='50063',
 			required=False)
 	parser.add_argument('--ip',
 			dest='ip', help='IP Address',
@@ -82,6 +82,8 @@ def master_serve(server, own_ip, db_name, logging_level):
 
 
 def sendHeartBeatMessage(master_server_ip, server, master, logger, crawler, logging_level):
+	retries = 0
+	
 	while True:
 		time.sleep(5)
 		channel = grpc.insecure_channel(master_server_ip)
@@ -91,8 +93,8 @@ def sendHeartBeatMessage(master_server_ip, server, master, logger, crawler, logg
 			logger.debug("Sending heartbeat message to master")
 			response = stub.Check(request, timeout = 10)
 			#print(response)
-			# reset retries
 			retries = 0
+			# reset retries
 		except Exception as e:
 			print str(e)
 			# if str(e.code()) == "StatusCode.DEADLINE_EXCEEDED":
