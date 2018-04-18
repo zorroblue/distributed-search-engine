@@ -24,6 +24,8 @@
 
 * Install mongodb 3.2.12
 
+* Install [robomongo](https://askubuntu.com/questions/739297/how-to-install-robomongo-on-ubuntu/781793?utm_medium=organic&utm_source=google_rich_qa&utm_campaign=google_rich_qa) if you want to visualize the data changes on a GUI client(optional)
+
 * Set up the database on the master and backup server
 	
 	`mongoimport --jsonArray -d masterdb -c indices data/indices.json` on master <br>
@@ -40,6 +42,8 @@
 
 	`pip install -r requirements.txt`
 
+
+* List the accessible replica servers in `replicas_list.txt`. The necessary setup as described above needs to be done. 
  
  ### Running the code
 
@@ -47,6 +51,6 @@
 
  	python -m grpc_tools.protoc -I./protos --python_out=. --grpc_python_out=. protos/search.proto
 
- #### Defaults:
+ ### Running the servers
 
- 	The master server runs in port 50051 while replica runs in port 50052. The database name of master is 'masterdb' while replica's is 'replicadb'
+Running `master.py`, `masterbackup.py` and `replica.py` with appropriate command line arguments should work. For running the crawler, use `crawler.py`. For demo purposes, we append the URLs in the URL list of 5 search terms with the input seed word during the writes. 
